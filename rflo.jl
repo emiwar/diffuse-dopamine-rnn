@@ -1,52 +1,64 @@
-using Plots
+mutable struct RFLO_NET
+    W_in::Matrix{Float64}
+    W_rec::Matrix{Float64}
+    W_out::Matrix{Float64}
+    tau_m::Float64
+    eta_in::Float64
+    eta_rec::Float64
+    eta_out::Float64
+    h::Vector{Float64}
+    p::Matrix{Float64}
+    q::Matrix{Float64}
+end
 
-n_in = 1
-n_hidden = 50
-n_out = 1
+function RFLO_NET(W_in, W_rec, W_out, tau_m, eta_in, eta_rec, eta_out)
+    n_hidden, n_in = size(W_in)
+    RFLO_NET(W_in, W_rec, W_out, tau_m, eta_in, eta_rec, eta_out,
+             zeros(n_hidden), zero(W_rec), zero(W_in))
+end
 
-tau_m = 10
+function RFLO_NET(W_in, W_rec, W_out, tau_m, eta)
+    RFLO_NET(W_in, W_rec, W_out, tau_m, eta, eta, eta)
+end
 
-W_in = (2*rand(n_hidden, n_in) .- 1)
-W_rec = 5*randn(n_hidden, n_hidden) / sqrt(n_hidden)
-W_out = 2*(2*rand(n_out, n_hidden) .- 1) / sqrt(n_hidden)
-eta_out = 0.5
-eta_rec = 0.5
-eta_in = 0.05
+function RFLO_NET(n_in, n_hidden, n_out; in_scale=1, rec_scale=5, out_scale=2,
+                  tau_m=10, eta_in=5e-3, eta_rec=5e-3, eta_out=5e-3)
+    W_in = (in_scale*rand(n_hidden, n_in) .- 1)
+    W_rec = rec_scale*randn(n_hidden, n_hidden) / sqrt(n_hidden)
+    W_out = out_scale*(2*rand(n_out, n_hidden) .- 1) / sqrt(n_hidden)
+    RFLO_NET(W_in, W_rec, W_out, tau_m, eta_in, eta_rec, eta_out)
+end
+function reset_state!(net::RFLO_NET)
+    net.h .= 0.0
+    net.p .= 0.0
+    net.q .= 0.0
+end
+function step!(net::RFLO_NET, inp, target)
+    u = net.W_rec*net.h + net.W_in*inp
+    f = @. 2/(1+exp(-u))-1
+    df = @. (1-f*f)/2
+    net.h += (-net.h + f)/net.tau_m   
+    net.p += (-net.p + df*net.h')/net.tau_m
+    net.q += (-net.q + df*inp')/net.tau_m
+    
+    y = net.W_out*net.h
+    err = target-y
+    feedback = net.W_out'*err
+    
+    net.W_out += net.eta_out*   err   *net.h'
+    net.W_rec += net.eta_rec*feedback.*net.p
+    net.W_in  += net.eta_in *feedback.*net.q
+    return y
+end
 
-
-phi(u) = 1/(1+exp(-u))
-t_max = 100
-theta = range(0,2pi;length=t_max)
-y_target = @. sin(theta)+0.5sin(2theta)+0.25sin(4theta)
-#plt = plot(0:0, ylim=(-1.5,1.5))
-@gif for ep=1:300
-    global W_out, W_rec, W_in
-    y = zeros(t_max)
-    h = zeros(t_max, n_hidden)
-    x = ones(t_max)
-    p = zeros(n_hidden, n_hidden)
-    q = zeros(n_hidden, n_in)
+function episode!(net::RFLO_NET, inp, target)
+    reset_state!(net)
+    t_max = size(inp)[1]
+    y = zero(target)
+    h = zeros(t_max, length(net.h))
     for t=2:t_max
-        f = 2*phi.(W_rec*h[t-1,:] + W_in*x[t, :]).-1
-        df = (1 .- f.*f)./2
-        
-        h[t,:] = h[t-1,:] + (-h[t-1,:] + f)/tau_m
-        y[t,:] = W_out*h[t, :]
-        err = y_target[t, :]-y[t,:]
-        
-        p += (-p + df*h[t, :]')/tau_m 
-        q += (-q + df*x[t, :]')/tau_m
-        
-        feedback = W_out'*err
-        
-        dW_out = err*h[t,:]'
-        dW_rec = feedback.*p
-        dW_in = feedback.*q
-        
-        W_out += eta_out*dW_out/t_max
-        W_rec += eta_rec.*dW_rec/t_max
-        W_in += eta_in.*dW_in/t_max
+        y[t, :] = step!(net, inp[t, :], target[t, :])
+        h[t, :] = net.h
     end
-    plot(y, label="y", ylim=(-1.5, 1.5), title="Episode $ep")
-    plot!(y_target, label="y_target")
+    return y, h
 end
