@@ -22,7 +22,7 @@ function DALE_NET(W_in, W_rec, W_out, tau_m, eta)
     DALE_NET(W_in, W_rec, W_out, tau_m, eta, eta, eta)
 end
 
-function DALE_NET(n_in, n_hidden, n_out; in_scale=1.8, rec_scale=-2.0, out_scale=2.0,
+function DALE_NET(n_in, n_hidden, n_out; in_scale=0.8, rec_scale=-2.0, out_scale=2.0,
                   tau_m=10, eta_in=5e-3, eta_rec=5e-3, eta_out=5e-3)
     W_in = in_scale*rand(n_hidden, n_in)
     W_rec = rec_scale*rand(n_hidden, n_hidden) / n_hidden
@@ -37,7 +37,7 @@ function reset_state!(net::DALE_NET)
 end
 function step!(net::DALE_NET, inp, target)
     prev_h = @. 1/(1+exp(-net.v))
-    u = net.W_rec*prev_h + net.W_in*inp .- 1
+    u = net.W_rec*prev_h + net.W_in*inp .- 2
     net.v += -net.v/net.tau_m + u
     #net.s += (1 .- net.s .- prev_h.*prev_h)/(0.5*net.tau_m)
     
@@ -56,6 +56,8 @@ function step!(net::DALE_NET, inp, target)
     
     net.W_rec .= min.(net.W_rec, 0)
     net.W_in .= max.(net.W_in, 0)
+    net.W_out[:, 1:end÷2] .= max.(net.W_out[:, 1:end÷2], 0)
+    net.W_out[:, end÷2+1:end] .= min.(net.W_out[:, end÷2+1:end], 0)
     return y
 end
 
