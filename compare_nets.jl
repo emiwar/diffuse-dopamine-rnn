@@ -24,7 +24,7 @@ for i=1:4
 end
 labels = ["Scalar dopamine" "No dopamine" "Vector dopamine" "Ideal (non-local)"]
 l = @layout [a{0.6w} [b;c;d;e]]
-p = plot(layout=l)
+p = plot(layout=l, fontfamily="arial")
 plot!(p[1], losses, xlim=(1, n_episodes), ylim=(1e-4, 1e0),
      xticks=[1,div(n_episodes, 2),n_episodes], yaxis=:log,
      labels=labels, xlabel="Episode", ylabel="Squared loss")
