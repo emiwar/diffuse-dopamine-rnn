@@ -75,6 +75,8 @@ function learn!(net::ONLINE_ECHO_NET, y, target)
     net.W_out .+= net.eta*err*(r(net)')
 end
     
+
+
 struct FORCE_NET <: REC_NET
     W_in::Matrix{Float64}
     W_rec::Matrix{Float64}
@@ -104,4 +106,45 @@ function learn!(net::FORCE_NET, y, target)
     P .-= P*ra*(ra')*P / (1+(ra')*P*ra)
     err = y-target
     net.W_out .-= err*((P*ra)')
+end
+
+
+struct SANGER_NET <: REC_NET
+    W_in::Matrix{Float64}
+    W_rec::Matrix{Float64}
+    W_middle::Matrix{Float64}
+    W_out::Matrix{Float64}
+    v::Vector{Float64}
+    v0::Vector{Float64}
+    inp::Vector{Float64}
+    tau_m::Float64
+    clamp_target::Bool
+end
+
+function SANGER_NET(in_size, hidden_size, middle_size, out_size; tau=10, g_in=1,
+                   g_rec=1, g_out=1, clamp_target=true)
+    W_in = g_in*randn(hidden_size, in_size) / sqrt(in_size)
+    W_rec = g_rec*randn(hidden_size, hidden_size) / sqrt(hidden_size)
+    W_middle = g_out*randn(middle_size, hidden_size) / sqrt(hidden_size)
+    W_out = g_out*randn(out_size, middle_size) / sqrt(middle_size)
+    v0 = randn(hidden_size)
+    SANGER_NET(W_in, W_rec, W_middle, W_out, v0, copy(v0), zeros(out_size),
+             tau, clamp_target)
+end
+
+function step!(net::SANGER_NET, target=nothing)
+    u = net.W_rec*r(net) + net.W_in*net.inp
+    net.v .+= -net.v/net.tau_m + u
+    middle = net.W_middle*r(net)
+    y = net.W_out*middle
+    if target !== nothing
+        net.W_middle .+= 2e-4*(middle*r(net)' - LowerTriangular(middle*middle')*net.W_middle)
+        #learn!(net, y, target)
+    end
+    if target === nothing || !net.clamp_target
+        net.inp .= y
+    else
+       net.inp .= target
+    end
+    return middle
 end
