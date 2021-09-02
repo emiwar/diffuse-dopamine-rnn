@@ -23,7 +23,9 @@ n_episodes = 100
     p = plot(y, label="y", ylim=(-1.5, 1.5), title="Episode $ep", layout=l)
     plot!(p[1], y_target, label="y_target")
     plot!(p[2], h, legend=false)
-    plot!(p[3], loss, xlim=(0, n_episodes), ylim=(1e-5, 1e0),
-          xticks=[0,div(n_episodes, 2),n_episodes], legend=false, yaxis=:log)
+    #plot!(p[3], loss, xlim=(0, n_episodes), ylim=(1e-5, 1e0),
+    #      xticks=[0,div(n_episodes, 2),n_episodes], legend=false, yaxis=:log)
+    plot!(p[3], loss, xlim=(1, n_episodes), ylim=(1e-5, 1e0),
+          xticks=[1,10,100], legend=false, yaxis=:log, xaxis=:log)
 end
 

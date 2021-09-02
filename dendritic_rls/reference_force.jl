@@ -117,6 +117,7 @@ struct SANGER_NET <: REC_NET
     v::Vector{Float64}
     v0::Vector{Float64}
     inp::Vector{Float64}
+    r_mean::Vector{Float64}
     tau_m::Float64
     clamp_target::Bool
 end
@@ -128,17 +129,30 @@ function SANGER_NET(in_size, hidden_size, middle_size, out_size; tau=10, g_in=1,
     W_middle = g_out*randn(middle_size, hidden_size) / sqrt(hidden_size)
     W_out = g_out*randn(out_size, middle_size) / sqrt(middle_size)
     v0 = randn(hidden_size)
+    t_mean = zeros(hidden_size)
     SANGER_NET(W_in, W_rec, W_middle, W_out, v0, copy(v0), zeros(out_size),
-             tau, clamp_target)
+               t_mean, tau, clamp_target)
 end
 
 function step!(net::SANGER_NET, target=nothing)
     u = net.W_rec*r(net) + net.W_in*net.inp
     net.v .+= -net.v/net.tau_m + u
-    middle = net.W_middle*r(net)
+    net.r_mean .+= 5e-3*(r(net) .- net.r_mean)
+    r_hat = r(net) - net.r_mean
+    middle = net.W_middle*r_hat
     y = net.W_out*middle
     if target !== nothing
-        net.W_middle .+= 2e-4*(middle*r(net)' - LowerTriangular(middle*middle')*net.W_middle)
+        M = sum(middle)
+        net.W_middle .-= 5e-2*((M .- middle).^2 .* middle)*r(net)'
+        #net.W_middle .+= 1e-4(2*middle .- M)*r(net)'
+        
+        #net.W_middle .+= 1e-4*(2*middle .- M)*r(net)'
+        
+        #net.W_middle .+= 2e-4*(middle*r(net)' - LowerTriangular(middle*middle')*net.W_middle)
+        #net.W_middle .+= 5e-4*(middle*r_hat' - (middle*middle')*net.W_middle)
+        #M = cumsum(middle)
+        #net.W_middle .+= 5e-4*(middle*(r_hat - net.W_middle'*(M.-middle))')
+        net.W_middle ./= sqrt.(sum(net.W_middle.^2, dims=2))
         #learn!(net, y, target)
     end
     if target === nothing || !net.clamp_target
