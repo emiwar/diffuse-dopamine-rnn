@@ -142,17 +142,17 @@ function step!(net::SANGER_NET, target=nothing)
     middle = net.W_middle*r_hat
     y = net.W_out*middle
     if target !== nothing
-        M = sum(middle)
-        net.W_middle .-= 5e-2*((M .- middle).^2 .* middle)*r(net)'
+        #M = sum(middle)
+        #net.W_middle .-= 5e-2*((M .- middle).^2 .* middle)*r(net)'
         #net.W_middle .+= 1e-4(2*middle .- M)*r(net)'
         
         #net.W_middle .+= 1e-4*(2*middle .- M)*r(net)'
         
         #net.W_middle .+= 2e-4*(middle*r(net)' - LowerTriangular(middle*middle')*net.W_middle)
-        #net.W_middle .+= 5e-4*(middle*r_hat' - (middle*middle')*net.W_middle)
+        net.W_middle .+= 5e-4*(middle*r_hat' - (middle*middle')*net.W_middle)
         #M = cumsum(middle)
         #net.W_middle .+= 5e-4*(middle*(r_hat - net.W_middle'*(M.-middle))')
-        net.W_middle ./= sqrt.(sum(net.W_middle.^2, dims=2))
+        #net.W_middle ./= sqrt.(sum(net.W_middle.^2, dims=2))
         #learn!(net, y, target)
     end
     if target === nothing || !net.clamp_target
