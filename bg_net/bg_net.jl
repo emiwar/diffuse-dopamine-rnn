@@ -30,7 +30,7 @@ function BG_NET(n_ctx, n_str, n_snr; tau_m=10, eta_str=5e-3, eta_snr=5e-3, lambd
     W_strstr = -15*rand(n_str, n_str) / n_str
     W_strsnr = -3*(2*rand(n_snr, n_str) .- 1) / sqrt(n_str)
     W_snrctx = -1.0*rand(n_ctx, n_snr)
-    W_ctxctx = (1*randn(n_ctx, n_ctx) .- 0.0) / sqrt(n_ctx)
+    W_ctxctx = (1.5*randn(n_ctx, n_ctx) .+ 0.0) / sqrt(n_ctx)
     #for i=1:n_ctx
     #    W_ctxctx[i,i] = 0.0
     #end
@@ -44,7 +44,7 @@ function reset_state!(net::BG_NET)
     net.p .= 0.0
     net.q .= 0.0
 end
-function step!(net::BG_NET, target)
+function step!(net::BG_NET, target; lock_feedback=false)
     prev_r_str = @. 1/(1+exp(-net.v_str))
     prev_r_ctx = @. 1/(1+exp(-net.v_ctx))
     u_str = net.W_strstr*prev_r_str + net.W_ctxstr*prev_r_ctx
@@ -56,9 +56,13 @@ function step!(net::BG_NET, target)
     net.p += -net.p/net.tau_m + dr_str*prev_r_str'
     net.q += -net.q/net.tau_m + dr_str*prev_r_ctx'
     
-    u_snr = net.W_strsnr*r_str
-    net.v_ctx += -net.v_ctx/net.tau_m + net.W_snrctx*target + net.W_ctxctx*prev_r_ctx
-    
+    u_snr = net.W_strsnr*r_str .+ 0.5
+    net.v_ctx += -net.v_ctx/net.tau_m + net.W_ctxctx*prev_r_ctx .+ 0.5
+    if lock_feedback
+        net.v_ctx += net.W_snrctx*target
+    else
+        net.v_ctx += net.W_snrctx*u_snr
+    end
     err = target-u_snr
     feedback = net.DA*err
     #feedback = net.W_strsnr'*err
