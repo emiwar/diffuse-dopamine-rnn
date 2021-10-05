@@ -15,13 +15,13 @@ function BgNet(size::Integer, readout_size::Integer, eta::Float64)
     populations[:snr] = Population(readout_size, tau=0.0)
 
     connect!(StaticSynapse, populations[:ctx_exc], populations[:ctx_exc],
-             (pre, post)->20*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
+             (pre, post)->5*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
     connect!(StaticSynapse, populations[:ctx_exc], populations[:ctx_inh],
-             (pre, post)->20*rand()/sqrt(size), 0.1)
+             (pre, post)->5*rand()/sqrt(size), 0.1)
     connect!(PlasticSynapse, populations[:ctx_inh], populations[:ctx_exc],
-             (pre, post)->-20*rand()/sqrt(size), 0.4)
+             (pre, post)->-5*rand()/sqrt(size), 0.4)
     connect!(PlasticSynapse, populations[:ctx_inh], populations[:ctx_inh],
-             (pre, post)->-20*rand()/sqrt(size), (pre, post)->0.4*(pre!=post))
+             (pre, post)->-5*rand()/sqrt(size), (pre, post)->0.4*(pre!=post))
     connect!(PlasticSynapse, populations[:ctx_exc], populations[:str_dmsn],
              (pre, post)->5*rand()/sqrt(size), 0.2)
     connect!(PlasticSynapse, populations[:ctx_exc], populations[:str_imsn],
@@ -51,10 +51,10 @@ function step!(net::BgNet)
     end
 end
 
-function step!(net::BgNet, target, eta)
+function step!(net::BgNet, target)
     step!(net)
     error = net[:snr].r - target
-    updateWeights!(net[:snr], -error, eta)
+    updateWeights!(net[:snr], -error, net.eta)
     #net[:snr].r .= target
 end
 

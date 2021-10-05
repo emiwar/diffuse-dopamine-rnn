@@ -59,7 +59,7 @@ function step!(pop::Population)
     end
     
     r = phi.(pop.v)
-    dr = r .* (1 .- r)
+    dr = (1 .- r.^2)#r .* (1 .- r)
     
     eachSynapse(pop, onlyPlastic=true) do synapse, prePop, post
         synapse.trace *= pop.alpha

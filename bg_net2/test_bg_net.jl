@@ -16,7 +16,7 @@ for t=1:T
     for pop in pop_order(net)
         log[pop][:, t] = net[pop].r
     end
-    net[:snr].r = target_fcn(t)
+    #net[:snr].r = target_fcn(t)
 end
 
 y = 1
@@ -31,7 +31,7 @@ end
 plot!(p, yticks=(yticks, pop_order(net)))
 
 
-net = BgNet(200, 2, 0.0)
+net = BgNet(200, 2, 2e-3)
 for pop in pop_order(net)
     net[pop].v = rand(size(net[pop])) .- 1
 end
@@ -47,9 +47,9 @@ T_train = 20000
 losses = Float64[]
 loss = 0.0
 for t=ProgressBar(1:T_train)
-    step!(net, target_fcn(t), -1e-3)
+    step!(net, target_fcn(t))
     loss += sum((net[:snr].r .- target_fcn(t)).^2)
-    net[:snr].r = target_fcn(t)
+    #net[:snr].r = target_fcn(t)
     if mod(t, base_period) == 0
         push!(losses, loss)
         loss = 0.0
