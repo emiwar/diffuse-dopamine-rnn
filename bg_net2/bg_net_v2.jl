@@ -23,23 +23,23 @@ function BgNet(size::Integer, readout_size::Integer, eta::Float64)
     connect!(PlasticSynapse, populations[:ctx_inh], populations[:ctx_inh],
              (pre, post)->-20*rand()/sqrt(size), (pre, post)->0.4*(pre!=post))
     connect!(PlasticSynapse, populations[:ctx_exc], populations[:str_dmsn],
-             (pre, post)->5*rand()/sqrt(size), 1.0)
+             (pre, post)->5*rand()/sqrt(size), 0.2)
     connect!(PlasticSynapse, populations[:ctx_exc], populations[:str_imsn],
-             (pre, post)->5*rand()/sqrt(size), 1.0)
+             (pre, post)->5*rand()/sqrt(size), 0.2)
     connect!(PlasticSynapse, populations[:str_dmsn], populations[:str_dmsn],
-             (pre, post)->-5*rand()/sqrt(size), (pre, post)->(pre!=post))
+             (pre, post)->-5*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
     connect!(PlasticSynapse, populations[:str_dmsn], populations[:str_imsn],
-             (pre, post)->-5*rand()/sqrt(size), 1.0)
+             (pre, post)->-5*rand()/sqrt(size), 0.1)
     connect!(PlasticSynapse, populations[:str_imsn], populations[:str_dmsn],
-             (pre, post)->-5*rand()/sqrt(size), 1.0)
+             (pre, post)->-5*rand()/sqrt(size), 0.1)
     connect!(PlasticSynapse, populations[:str_imsn], populations[:str_imsn],
-             (pre, post)->-5*rand()/sqrt(size), (pre, post)->(pre!=post))
+             (pre, post)->-5*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
     connect!(PlasticSynapse, populations[:str_dmsn], populations[:snr],
              (pre, post)->-rand()/sqrt(size), 1.0)
     connect!(PlasticSynapse, populations[:str_imsn], populations[:snr],
              (pre, post)-> rand()/sqrt(size), 1.0)
     connect!(StaticSynapse, populations[:snr], populations[:ctx_exc],
-             (pre, post)->-rand()/readout_size, 1.0)
+             (pre, post)->-2*rand()/readout_size, 1.0)
     return BgNet(populations, eta)    
 end
 
@@ -49,6 +49,13 @@ function step!(net::BgNet)
     for pop in pop_order(net)
         step!(net[pop])
     end
+end
+
+function step!(net::BgNet, target, eta)
+    step!(net)
+    error = net[:snr].r - target
+    updateWeights!(net[:snr], -error, eta)
+    #net[:snr].r .= target
 end
 
 function Base.show(io::IO, net::BgNet)

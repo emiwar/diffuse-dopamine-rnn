@@ -42,8 +42,10 @@ end
 function eachSynapse(f::Function, postPop::Population; onlyPlastic=false)
     for (prePop, synapses) in postPop.projections
         if !onlyPlastic || eltype(eltype(synapses)) <: PlasticSynapse
-            for post=1:size(postPop), synapse=synapses[post]
-                f(synapse, prePop, post)
+            @Threads.threads for post=1:size(postPop)
+                for synapse=synapses[post]
+                    f(synapse, prePop, post)
+                end
             end
         end
     end
