@@ -12,9 +12,9 @@ end
 
 Base.size(pop::Population) = length(pop.v)
 Population(size::Integer; tau=20.0, bias=0.0) = Population(zeros(size), zeros(size), Dict{Population, Vector{Vector{T}} where T <: Synapse}(), exp(-1/tau), bias)
-phi(v) = tanh(v)#1/(1+exp(-v))
+phi(v) = 1/(1+exp(-v))
 
-struct StaticSynapse <: Synapse
+mutable struct StaticSynapse <: Synapse
     weight::Float64
     pre::UInt64
 end
@@ -59,7 +59,7 @@ function step!(pop::Population)
     end
     
     r = phi.(pop.v)
-    dr = (1 .- r.^2)#r .* (1 .- r)
+    dr = r .* (1 .- r) #(1 .- r.^2)
     
     eachSynapse(pop, onlyPlastic=true) do synapse, prePop, post
         synapse.trace *= pop.alpha
@@ -91,4 +91,25 @@ function getWeightMatrix(pops::Vector{Population})
         end
     end
     return W
+end
+
+function balanceWeights!(pop::Population)
+    for i=1:size(pop)
+        totW = 0.0
+        cntExc = 0
+        cntInh = 0
+        for synapses in values(pop.projections)
+            totW += sum(getfield.(synapses[i], :weight))
+            cntExc += sum(getfield.(synapses[i], :weight) .>= 0)
+            cntInh += sum(getfield.(synapses[i], :weight) .<  0)
+        end
+        cnt = totW >= 0 ? cntInh : cntExc
+        for synapses in values(pop.projections)
+            map(synapses[i]) do synapse
+                if sign(synapse.weight) != sign(totW)
+                    synapse.weight -= totW / cnt
+                end
+            end
+        end
+    end
 end
