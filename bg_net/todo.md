@@ -26,4 +26,7 @@
 * Spatial correlations
     - Average correlation as a function of distance before and after training
     - Distance from each neuron to the K neurons it's most correlated with
-    
+* Learning high/low frequencies
+    - Plot showing diffuse dopamine can learn high/low frequency signals better than
+      just readout learning. Perhaps x-axis frequency of signal and y-axis loss after
+      N trials?

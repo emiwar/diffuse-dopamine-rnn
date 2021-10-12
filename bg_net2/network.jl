@@ -1,6 +1,7 @@
 using LinearAlgebra
 
 abstract type Synapse end
+abstract type PlasticSynapse <: Synapse end
 
 mutable struct Population
     v::Vector{Float64}
@@ -19,12 +20,18 @@ mutable struct StaticSynapse <: Synapse
     pre::UInt64
 end
 
-mutable struct PlasticSynapse <: Synapse
+mutable struct EligabilitySynapse <: PlasticSynapse
     weight::Float64
     pre::UInt64
     trace::Float64
 end
-PlasticSynapse(weight, pre) = PlasticSynapse(weight, pre, 0.0)
+
+mutable struct BalanceSynapse <: PlasticSynapse
+    weight::Float64
+    pre::UInt64
+end
+
+EligabilitySynapse(weight, pre) = EligabilitySynapse(weight, pre, 0.0)
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -39,9 +46,9 @@ function connect!(synapseType::Type, prePop::Population, postPop::Population,
     postPop.projections[prePop] = synapses
 end
 
-function eachSynapse(f::Function, postPop::Population; onlyPlastic=false)
+function eachSynapse(f::Function, postPop::Population; synapseType::Type=Synapse)
     for (prePop, synapses) in postPop.projections
-        if !onlyPlastic || eltype(eltype(synapses)) <: PlasticSynapse
+        if eltype(eltype(synapses)) <: synapseType
             @Threads.threads for post=1:size(postPop)
                 for synapse=synapses[post]
                     f(synapse, prePop, post)
@@ -61,7 +68,7 @@ function step!(pop::Population)
     r = phi.(pop.v)
     dr = r .* (1 .- r) #(1 .- r.^2)
     
-    eachSynapse(pop, onlyPlastic=true) do synapse, prePop, post
+    eachSynapse(pop, synapseType=EligabilitySynapse) do synapse, prePop, post
         synapse.trace *= pop.alpha
         synapse.trace += (1-pop.alpha)*prePop.r[synapse.pre]*dr[post]
     end
@@ -70,10 +77,16 @@ function step!(pop::Population)
 end
 
 function updateWeights!(pop::Population, feedback, eta)
-    eachSynapse(pop, onlyPlastic=true) do synapse, prePop, post
+    eachSynapse(pop, synapseType=EligabilitySynapse) do synapse, prePop, post
         sgn = sign(synapse.weight)
         synapse.weight += eta*synapse.trace*feedback[post]
         synapse.weight *= (sgn*synapse.weight) >= 0
+    end
+    eachSynapse(pop, synapseType=BalanceSynapse) do synapse, prePop, post
+        #sgn = sign(synapse.weight)
+        synapse.weight += eta*prePop.r[synapse.pre]*(-pop.v[post])
+        synapse.weight = min(synapse.weight, 0.0)
+        #synapse.weight *= (sgn*synapse.weight) >= 0
     end
 end
 
@@ -88,6 +101,17 @@ function getWeightMatrix(pops::Vector{Population})
                 j = offset[prePop] + synapse.pre
                 W[i, j] += synapse.weight
             end
+        end
+    end
+    return W
+end
+
+function getWeightMatrix(prePop::Population, postPop::Population)
+    W = zeros(size(postPop), size(prePop))
+    projection = postPop.projections[prePop]
+    for post=1:size(postPop)
+        for synapse in projection[post]
+            W[post, synapse.pre] += synapse.weight
         end
     end
     return W
