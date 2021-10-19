@@ -13,14 +13,14 @@ end
 
 Base.size(pop::Population) = length(pop.v)
 Population(size::Integer; tau=20.0, bias=0.0) = Population(zeros(size), zeros(size), Dict{Population, Vector{Vector{T}} where T <: Synapse}(), exp(-1/tau), bias)
-phi(v) = 1/(1+exp(-v))
+phi(v) = 1/(1+exp(-v+2))
 
 mutable struct StaticSynapse <: Synapse
     weight::Float64
     pre::UInt64
 end
 
-mutable struct EligabilitySynapse <: PlasticSynapse
+mutable struct EligabilitySynapse{sign} <: PlasticSynapse
     weight::Float64
     pre::UInt64
     trace::Float64
@@ -31,7 +31,8 @@ mutable struct BalanceSynapse <: PlasticSynapse
     pre::UInt64
 end
 
-EligabilitySynapse(weight, pre) = EligabilitySynapse(weight, pre, 0.0)
+EligabilitySynapse{s}(weight, pre) where s = EligabilitySynapse{s}(weight, pre, 0.0)
+sign(::EligabilitySynapse{s}) where s = s
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -77,10 +78,13 @@ function step!(pop::Population)
 end
 
 function updateWeights!(pop::Population, feedback, eta)
-    eachSynapse(pop, synapseType=EligabilitySynapse) do synapse, prePop, post
-        sgn = sign(synapse.weight)
+    eachSynapse(pop, synapseType=EligabilitySynapse{1}) do synapse, prePop, post
         synapse.weight += eta*synapse.trace*feedback[post]
-        synapse.weight *= (sgn*synapse.weight) >= 0
+        synapse.weight = max(synapse.weight, 0)
+    end
+    eachSynapse(pop, synapseType=EligabilitySynapse{-1}) do synapse, prePop, post
+        synapse.weight += eta*synapse.trace*feedback[post]
+        synapse.weight = min(synapse.weight, 0)
     end
     eachSynapse(pop, synapseType=BalanceSynapse) do synapse, prePop, post
         #sgn = sign(synapse.weight)
