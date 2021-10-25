@@ -25,7 +25,7 @@ input_fcn(t) = phi.(proj*[cos(2*pi*t/base_period), sin(2*pi*t/base_period)])
 plotTraces(recordSampleRun(net, T, clamp=(thal=input_fcn,)), target=target_fcn)
 
 
-T_train = 50000
+T_train = 200000
 losses = Float64[]
 loss = 0.0
 @showprogress for t=1:T_train

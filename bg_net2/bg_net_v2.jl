@@ -9,7 +9,7 @@ mutable struct BgNet
     feedback_imsn::Matrix{Float64}
 end
 
-function BgNet(size::Integer, readout_size::Integer, eta::Float64)
+function BgNet(size::Integer, readout_size::Integer, eta::Float64; lambda=0.1)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), bias=0.0)
@@ -53,10 +53,10 @@ function BgNet(size::Integer, readout_size::Integer, eta::Float64)
              (pre, post)->25*rand()/Base.size(populations[:thal]), 0.25)
     connect!(EligabilitySynapse{1}, populations[:thal], populations[:str_imsn],
              (pre, post)->25*rand()/Base.size(populations[:thal]), 0.25)
-    str_dmsn_pos = rand(size, 3)
-    str_imsn_pos = rand(size, 3)
-    feedback_dmsn = createFeedbackMatrix(str_dmsn_pos, readout_size)
-    feedback_imsn = createFeedbackMatrix(str_imsn_pos, readout_size)
+    str_dmsn_pos = rand(Base.size(populations[:str_dmsn]), 3)
+    str_imsn_pos = rand(Base.size(populations[:str_imsn]), 3)
+    feedback_dmsn = createFeedbackMatrix(str_dmsn_pos, readout_size, lambda=lambda)
+    feedback_imsn = createFeedbackMatrix(str_imsn_pos, readout_size, lambda=lambda)
     #ctx_exc_avg = 0.5*ones(Base.size(populations[:ctx_exc]))
     return BgNet(populations, eta, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn)   
 end
@@ -80,14 +80,14 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn =  (net.feedback_dmsn)*(error .* postFactor)
         feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*50)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*50)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
     elseif updateStriatum==:ideal
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)
         feedback_imsn = -(getWeightMatrix(net[:str_imsn], net[:snr]))'*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*50)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*50)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
     end
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r
     #updateWeights!(net[:ctx_exc], 0.5 .- net.ctx_exc_avg, net.eta)
@@ -137,7 +137,7 @@ function createFeedbackMatrix(str_pos, output_size; n_varicosities=10, lambda=0.
         varicosities_pos = rand(n_varicosities, 3)
         for j=1:str_size, k=1:n_varicosities
             d = norm(str_pos[j, :] - varicosities_pos[k, :])
-            DA[j, i] += exp(-d/lambda)
+            DA[j, i] += (1/lambda)*exp(-d/lambda)
         end
     end
     return DA
