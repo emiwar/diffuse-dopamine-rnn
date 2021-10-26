@@ -12,33 +12,33 @@ end
 function BgNet(size::Integer, readout_size::Integer, eta::Float64; lambda=0.1)
     populations = Dict{Symbol, Population}()
     
-    populations[:ctx_exc] = Population(floor(Int, 0.8*size), bias=0.0)
-    populations[:ctx_inh] = Population(floor(Int, 0.2*size))
-    populations[:str_dmsn] = Population(floor(Int, 0.5*size))
-    populations[:str_imsn] = Population(floor(Int, 0.5*size))
+    populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0)
+    populations[:ctx_inh] = Population(floor(Int, 0.2*size), tau=10.0)
+    populations[:str_dmsn] = Population(floor(Int, 0.5*size), tau=10.0)
+    populations[:str_imsn] = Population(floor(Int, 0.5*size), tau=10.0)
     populations[:snr] = Population(readout_size, tau=0.0, bias=1.0)
     populations[:thal] = Population(readout_size*10, tau=0.0, bias=0.0)
 
     connect!(StaticSynapse, populations[:ctx_exc], populations[:ctx_exc],
-             (pre, post)->70*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
+             (pre, post)->25*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
     connect!(StaticSynapse, populations[:ctx_exc], populations[:ctx_inh],
-             (pre, post)->70*rand()/sqrt(size), 0.1)
+             (pre, post)->25*rand()/sqrt(size), 0.1)
     connect!(StaticSynapse, populations[:ctx_inh], populations[:ctx_exc],
-             (pre, post)->-120*rand()/sqrt(size), 0.4)
+             (pre, post)->-25*rand()/sqrt(size), 0.4)
     connect!(StaticSynapse, populations[:ctx_inh], populations[:ctx_inh],
-             (pre, post)->-75*rand()/sqrt(size), (pre, post)->0.4*(pre!=post))
+             (pre, post)->-25*rand()/sqrt(size), (pre, post)->0.4*(pre!=post))
     connect!(EligabilitySynapse{1}, populations[:ctx_exc], populations[:str_dmsn],
-             (pre, post)->50*rand()/sqrt(size), 0.2)
+             (pre, post)->25*rand()/sqrt(size), 0.2)
     connect!(EligabilitySynapse{1}, populations[:ctx_exc], populations[:str_imsn],
-             (pre, post)->50*rand()/sqrt(size), 0.2)
+             (pre, post)->25*rand()/sqrt(size), 0.2)
     connect!(EligabilitySynapse{-1}, populations[:str_dmsn], populations[:str_dmsn],
-             (pre, post)->-40*rand()/sqrt(size), (pre, post)->0.2*(pre!=post))
+             (pre, post)->-25*rand()/sqrt(size), (pre, post)->0.2*(pre!=post))
     connect!(EligabilitySynapse{-1}, populations[:str_dmsn], populations[:str_imsn],
-             (pre, post)->-40*rand()/sqrt(size), 0.2)
+             (pre, post)->-25*rand()/sqrt(size), 0.2)
     connect!(EligabilitySynapse{-1}, populations[:str_imsn], populations[:str_dmsn],
-             (pre, post)->-40*rand()/sqrt(size), 0.2)
+             (pre, post)->-25*rand()/sqrt(size), 0.2)
     connect!(EligabilitySynapse{-1}, populations[:str_imsn], populations[:str_imsn],
-             (pre, post)->-40*rand()/sqrt(size), (pre, post)->0.2*(pre!=post))
+             (pre, post)->-25*rand()/sqrt(size), (pre, post)->0.2*(pre!=post))
     connect!(EligabilitySynapse{-1}, populations[:str_dmsn], populations[:snr],
              (pre, post)->-5*rand()/sqrt(size), 1.0)
     connect!(EligabilitySynapse{1}, populations[:str_imsn], populations[:snr],
@@ -46,17 +46,22 @@ function BgNet(size::Integer, readout_size::Integer, eta::Float64; lambda=0.1)
     #connect!(StaticSynapse, populations[:snr], populations[:thal],
     #         (pre, post)->-5*rand(), 1.0)
     connect!(StaticSynapse, populations[:thal], populations[:ctx_exc],
-             (pre, post)->110*rand()/Base.size(populations[:thal]), 0.2)
+             (pre, post)->50*rand()/Base.size(populations[:thal]), 0.2)
     connect!(StaticSynapse, populations[:thal], populations[:ctx_inh],
-             (pre, post)->110*rand()/Base.size(populations[:thal]), 0.2)
+             (pre, post)->50*rand()/Base.size(populations[:thal]), 0.2)
     connect!(EligabilitySynapse{1}, populations[:thal], populations[:str_dmsn],
-             (pre, post)->25*rand()/Base.size(populations[:thal]), 0.25)
+             (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
     connect!(EligabilitySynapse{1}, populations[:thal], populations[:str_imsn],
-             (pre, post)->25*rand()/Base.size(populations[:thal]), 0.25)
+             (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
     str_dmsn_pos = rand(Base.size(populations[:str_dmsn]), 3)
     str_imsn_pos = rand(Base.size(populations[:str_imsn]), 3)
     feedback_dmsn = createFeedbackMatrix(str_dmsn_pos, readout_size, lambda=lambda)
     feedback_imsn = createFeedbackMatrix(str_imsn_pos, readout_size, lambda=lambda)
+    
+    balanceWeights!(populations[:ctx_exc])
+    balanceWeights!(populations[:ctx_inh])
+    balanceWeights!(populations[:str_dmsn])
+    balanceWeights!(populations[:str_imsn])
     #ctx_exc_avg = 0.5*ones(Base.size(populations[:ctx_exc]))
     return BgNet(populations, eta, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn)   
 end
@@ -80,14 +85,14 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn =  (net.feedback_dmsn)*(error .* postFactor)
         feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*25)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*25)
     elseif updateStriatum==:ideal
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)
         feedback_imsn = -(getWeightMatrix(net[:str_imsn], net[:snr]))'*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*25)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*25)
     end
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r
     #updateWeights!(net[:ctx_exc], 0.5 .- net.ctx_exc_avg, net.eta)
@@ -161,7 +166,7 @@ end
 function plotTraces(log::NamedTuple; target=nothing)
     y = 0
     yticks = Float64[]
-    p = plot(size=(700, 800))
+    p = plot(size=(700, 800), fmt=:png)
     for pop in keys(log)
         T = size(log[pop], 2)
         if pop==:snr && target != nothing

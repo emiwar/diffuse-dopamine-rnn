@@ -32,7 +32,7 @@ mutable struct BalanceSynapse <: PlasticSynapse
 end
 
 EligabilitySynapse{s}(weight, pre) where s = EligabilitySynapse{s}(weight, pre, 0.0)
-sign(::EligabilitySynapse{s}) where s = s
+Base.sign(::EligabilitySynapse{s}) where s = s
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -134,7 +134,7 @@ function balanceWeights!(pop::Population)
         cnt = totW >= 0 ? cntInh : cntExc
         for synapses in values(pop.projections)
             map(synapses[i]) do synapse
-                if sign(synapse.weight) != sign(totW)
+                if Base.sign(synapse.weight) != Base.sign(totW)
                     synapse.weight -= totW / cnt
                 end
             end

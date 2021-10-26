@@ -17,13 +17,13 @@ proj = randn(20, 2)
 proj = 4*(proj ./ sqrt.(sum(proj.^2, dims=2)))
 input_fcn(t) = phi.(proj*[cos(2*pi*t/base_period), sin(2*pi*t/base_period)])
 
-T_train = 200000
-n_runs = 10
+T_train = 250000
+n_runs = 3
 
 losses = Dict(key=>zeros(div(T_train, base_period), n_runs) for key in nets)#map(net->Float64[], nets)
 for key in nets
     for r=1:n_runs
-        net = BgNet(500, 2, 2e-2)
+        net = BgNet(200, 2, 5e-3)
         loss = 0.0
         @showprogress "$(key), run $r: " for t=1:T_train
             loss += step!(net, target_fcn(t), clamp=(thal=input_fcn(t),), updateStriatum=key)
@@ -34,7 +34,7 @@ for key in nets
         end
     end
 end
-h5open("comparison_runs.h5", "w") do fid
+h5open("comparison_runs_v2.h5", "w") do fid
     for key in nets
         fid[string(key)] = losses[key]
     end

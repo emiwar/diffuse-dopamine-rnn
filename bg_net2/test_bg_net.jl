@@ -3,11 +3,10 @@ using Plots
 using ProgressMeter
 include("bg_net_v2.jl")
 
-net = BgNet(500, 2, 5e-3)
+net = BgNet(200, 2, 1e-2)
 
 #plotTraces(net)
-#balanceWeights!(net[:ctx_exc])
-#balanceWeights!(net[:ctx_inh])
+
 #for pop in pop_order(net)
 #    net[pop].v = rand(size(net[pop])) .- 1
 #end
@@ -21,11 +20,11 @@ proj = randn(20, 2)
 proj = 4*(proj ./ sqrt.(sum(proj.^2, dims=2)))
 input_fcn(t) = phi.(proj*[cos(2*pi*t/base_period), sin(2*pi*t/base_period)])
 
+log = recordSampleRun(net, T, clamp=(thal=input_fcn,))
+plotTraces(log, target=target_fcn)
 
-plotTraces(recordSampleRun(net, T, clamp=(thal=input_fcn,)), target=target_fcn)
 
-
-T_train = 200000
+T_train = 20000
 losses = Float64[]
 loss = 0.0
 @showprogress for t=1:T_train
