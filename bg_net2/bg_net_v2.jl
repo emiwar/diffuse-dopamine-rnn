@@ -91,8 +91,8 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)
         feedback_imsn = -(getWeightMatrix(net[:str_imsn], net[:snr]))'*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*25)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*25)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
     end
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r
     #updateWeights!(net[:ctx_exc], 0.5 .- net.ctx_exc_avg, net.eta)
@@ -184,3 +184,10 @@ end
 
 plotHeatmaps(net::BgNet, T::Integer) = plotHeatmaps(recordSampleRun(net, T))
 plotTraces(net::BgNet, T::Integer; target=nothing) = plotTraces(recordSampleRun(net, T), target=target)
+
+function gaussianProcessTarget(duration, ndim, tau; eps=1e-6)
+    dists = [min(abs(i-j), abs(duration+j-i), abs(-duration+j-i)) 
+             for i=1:duration, j=1:duration]
+    cov = exp.(-(dists.^2)./(tau^2))
+    return rand(MvNormal(zeros(duration), cov+eps*I), ndim)
+end 
