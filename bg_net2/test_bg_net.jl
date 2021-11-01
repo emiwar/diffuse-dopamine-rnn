@@ -1,26 +1,14 @@
 using LinearAlgebra
 using Plots
 using ProgressMeter
-include("bg_net_v2.jl")
+include("experiment.jl")
 
-net = BgNet(200, 2, 1e-2)
-
-#plotTraces(net)
-
-#for pop in pop_order(net)
-#    net[pop].v = rand(size(net[pop])) .- 1
-#end
-
-
-T = 200
-base_period = 200
-target_fcn(t) = 0.25*[sin(2*pi*t/base_period)+0.5sin(4*pi*t/base_period)+0.25sin(8*pi*t/base_period),
-                 0.6*cos(2*pi*t/base_period)+1.0sin(4*pi*t/base_period)-0.5sin(8*pi*t/base_period)] .+ .5
-proj = randn(20, 2)
-proj = 4*(proj ./ sqrt.(sum(proj.^2, dims=2)))
-input_fcn(t) = phi.(proj*[cos(2*pi*t/base_period), sin(2*pi*t/base_period)])
-
-log = recordSampleRun(net, T, clamp=(thal=input_fcn,))
+net = BgNet(200, 2, 1e-3)
+input = create_input(size(net[:thal]), 200)
+target = 0.5 .+ 0.15*gaussianProcessTarget(200, 2, 20)
+input_fcn(t) = input[t, :]
+target_fcn(t) = target[t, :]
+log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
 plotTraces(log, target=target_fcn)
 
 

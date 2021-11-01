@@ -34,9 +34,9 @@ function plotSeries!(df::DataFrame, x::Symbol, y::Symbol, group::Symbol;
     for g in unique(df[:, group])
         filtered = df[df[:, group] .== g, :]
         gpy = DataFrames.groupby(filtered, x)
-        combined = combine(gpy, :loss=>median=>:mu, :loss=>std=>:sig,
-                           :loss=>(q->quantile(q, 0.25))=>:low_q,
-                           :loss=>(q->quantile(q, 0.75))=>:high_q)
+        combined = combine(gpy, y=>median=>:mu, y=>std=>:sig,
+                           y=>(q->quantile(q, 0.25))=>:low_q,
+                           y=>(q->quantile(q, 0.75))=>:high_q)
         ribbon = (combined[:, :mu]-combined[:, :low_q],
                   combined[:, :high_q]-combined[:, :mu])
         plot!(combined[:, x], combined[:, :mu],
@@ -49,6 +49,17 @@ function plotSeries(df::DataFrame, x::Symbol, y::Symbol, group::Symbol;
                     kwargs...)
     plot()
     plotSeries!(df, x, y, group; kwargs...)
+end
+
+function printSummary(df::DataFrame)
+    for n in names(df)
+        l, h = extrema(df[:, n])
+        if l==h
+            println("$n: $l")
+        else
+            println("$n: [$l, $h]")
+        end
+    end
 end
 
 #runs = readAsDataFrame("data/comparison_dopamine.h5")

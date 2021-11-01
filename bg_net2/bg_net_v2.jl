@@ -167,6 +167,7 @@ function plotTraces(log::NamedTuple; target=nothing)
     y = 0
     yticks = Float64[]
     p = plot(size=(700, 800), fmt=:png)
+    T = 0
     for pop in keys(log)
         T = size(log[pop], 2)
         if pop==:snr && target != nothing
