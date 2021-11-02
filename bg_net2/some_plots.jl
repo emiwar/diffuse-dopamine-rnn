@@ -18,5 +18,5 @@ losses = readAsDataFrame("data/target_dim.h5")
 plotSeries(losses, :target_dim, :loss, :striatumUpdate)#, yaxis=:log)
 
 losses = readAsDataFrame("data/learning_rate.h5")
-plotSeries(losses, :learning_rate, :loss, :striatumUpdate)#, yaxis=:log)
+plotSeries(losses, :learning_rate, :loss, :striatumUpdate, xaxis=:log, yaxis=:log)
 

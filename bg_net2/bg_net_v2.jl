@@ -2,14 +2,15 @@ include("network.jl")
 
 mutable struct BgNet
     populations::Dict{Symbol, Population}
-    eta::Float64
+    eta_snr::Float64
+    eta_str::Float64
     str_dmsn_pos::Matrix{Float64}
     str_imsn_pos::Matrix{Float64}
     feedback_dmsn::Matrix{Float64}
     feedback_imsn::Matrix{Float64}
 end
 
-function BgNet(size::Integer, readout_size::Integer, eta::Float64; lambda=0.1)
+function BgNet(size::Integer, readout_size::Integer, eta_str::Float64, eta_snr::Float64; lambda=0.1)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0)
@@ -63,7 +64,7 @@ function BgNet(size::Integer, readout_size::Integer, eta::Float64; lambda=0.1)
     balanceWeights!(populations[:str_dmsn])
     balanceWeights!(populations[:str_imsn])
     #ctx_exc_avg = 0.5*ones(Base.size(populations[:ctx_exc]))
-    return BgNet(populations, eta, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn)   
+    return BgNet(populations, eta_snr, eta_str, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn)   
 end
 
 pop_order(::BgNet) = (:thal, :ctx_exc, :ctx_inh, :str_dmsn, :str_imsn, :snr)
@@ -80,19 +81,19 @@ end
 function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatum=:dopamine)
     step!(net, clamp=clamp)
     error = net[:snr].r - target
-    updateWeights!(net[:snr], -error, net.eta)
+    updateWeights!(net[:snr], -error, net.eta_snr)
     if updateStriatum==:dopamine
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn =  (net.feedback_dmsn)*(error .* postFactor)
         feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*25)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*25)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str)
     elseif updateStriatum==:ideal
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)
         feedback_imsn = -(getWeightMatrix(net[:str_imsn], net[:snr]))'*(error .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta*5)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta*5)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str)
     end
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r
     #updateWeights!(net[:ctx_exc], 0.5 .- net.ctx_exc_avg, net.eta)
@@ -114,10 +115,10 @@ function recordSampleRun(net::BgNet, T::Integer; clamp::NamedTuple=NamedTuple())
     return log
 end
 
-function recordSampleRun(net::BgNet, T::Integer, target_fcn; clamp::NamedTuple=NamedTuple())
+function recordSampleRun(net::BgNet, T::Integer, target_fcn; clamp::NamedTuple=NamedTuple(), updateStriatum=:dopamine)
     log = NamedTuple(pop=>zeros(size(net[pop]), T) for pop in pop_order(net))
     for t=1:T
-        step!(net, target_fcn(t), clamp=map(x->x(t), clamp))
+        step!(net, target_fcn(t), clamp=map(x->x(t), clamp), updateStriatum=updateStriatum)
         for pop in pop_order(net)
             log[pop][:, t] = net[pop].r
         end
