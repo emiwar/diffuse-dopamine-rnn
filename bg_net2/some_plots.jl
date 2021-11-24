@@ -20,3 +20,25 @@ plotSeries(losses, :target_dim, :loss, :striatumUpdate)#, yaxis=:log)
 losses = readAsDataFrame("data/learning_rate.h5")
 plotSeries(losses, :learning_rate, :loss, :striatumUpdate, xaxis=:log, yaxis=:log)
 
+
+losses = readAsDataFrame("data/feedback_scale_different_eta.h5")
+for lr=learning_rates
+    pl = plotSeries(losses[losses.learning_rate .== lr, :], :feedback_factor, :loss, :striatumUpdate, title="Learning rate $lr", yaxis=:log)
+    display(pl)
+end
+
+for ff=unique(losses.feedback_factor)
+    pl = plotSeries(losses[losses.feedback_factor .== ff, :], :learning_rate, :loss, :striatumUpdate, title="Feedback factor $ff", yaxis=:log)
+    display(pl)
+end
+#Lr=0.005, dopamine_scale=10, ideal_scale=100
+
+losses = readAsDataFrame("different_lambdas_correct_for_feedback_scale.h5")
+plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
+
+losses = readAsDataFrame("data/different_lambda_corrected_feedback.h5")
+plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
+
+losses = readAsDataFrame("data/different_lambda_only_dopamine.h5")
+plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
+

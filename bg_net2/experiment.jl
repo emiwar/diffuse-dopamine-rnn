@@ -50,6 +50,9 @@ function run_experiment(fn; params...)
     git_commit = readchomp(`git rev-parse --short HEAD`)
     for (i, values) in enumerate(product(param_ranges...))
         named_params = NamedTuple{keys(param_ranges)}(values)
+        if named_params.striatumUpdate == :ideal
+            named_params = merge(named_params, (;feedback_factor = named_params.feedback_factor*10.0))
+        end
         all_params = merge(DEFAULT_PARAMS, named_params)
         net, losses = train_network("$named_params "; all_params...)
         h5open(fn, "cw") do fid

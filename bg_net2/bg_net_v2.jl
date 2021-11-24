@@ -10,7 +10,7 @@ mutable struct BgNet
     feedback_imsn::Matrix{Float64}
 end
 
-function BgNet(size::Integer, readout_size::Integer, eta_str::Float64, eta_snr::Float64; lambda=0.1)
+function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64; lambda=0.1)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0)

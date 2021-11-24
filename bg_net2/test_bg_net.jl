@@ -5,7 +5,7 @@ include("experiment.jl")
 
 net = BgNet(200, 2, 1e-3)
 input = create_input(size(net[:thal]), 200)
-target = 0.5 .+ 0.15*gaussianProcessTarget(200, 2, 20)
+target = 0.5 .+ 0.15*gaussianProcessTarget(200, 2, 10)
 input_fcn(t) = input[t, :]
 target_fcn(t) = target[t, :]
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
@@ -27,12 +27,12 @@ end
 plot(losses[1:end])#, ylim=(0, 150))
 
 
-net = BgNet(500, 2, 1e-2)
-recordSampleRun(net, T, clamp=(thal=input_fcn,))
-p = Progress(100)
-@gif for ep=1:100
+net = BgNet(200, 2, 1e-2)
+recordSampleRun(net, 200, clamp=(thal=input_fcn,))
+p = Progress(200)
+@gif for ep=1:200
     next!(p)
-    plotTraces(recordSampleRun(net, T, target_fcn, clamp=(thal=input_fcn,)), target=target_fcn)
+    log = recordSampleRun(net, 200, target_fcn, clamp=(thal=input_fcn,), updateStriatum=:ideal)
+    plotTraces(log, target=target_fcn)
 end
-
 
