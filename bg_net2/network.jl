@@ -9,10 +9,15 @@ mutable struct Population
     projections::Dict{Population, Vector{Vector{T}} where T <: Synapse}
     alpha::Float64
     bias::Float64
+    noise::Float64
 end
 
 Base.size(pop::Population) = length(pop.v)
-Population(size::Integer; tau=20.0, bias=0.0) = Population(zeros(size), zeros(size), Dict{Population, Vector{Vector{T}} where T <: Synapse}(), exp(-1/tau), bias)
+function Population(size::Integer; tau=20.0, bias=0.0, noise=0.0)
+    Population(zeros(size), zeros(size),
+        Dict{Population, Vector{Vector{T}} where T <: Synapse}(),
+        exp(-1/tau), bias, noise)
+end
 phi(v) = 1/(1+exp(-v+2))
 
 mutable struct StaticSynapse <: Synapse

@@ -13,12 +13,12 @@ end
 function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64; lambda=0.1)
     populations = Dict{Symbol, Population}()
     
-    populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0)
-    populations[:ctx_inh] = Population(floor(Int, 0.2*size), tau=10.0)
-    populations[:str_dmsn] = Population(floor(Int, 0.5*size), tau=10.0)
-    populations[:str_imsn] = Population(floor(Int, 0.5*size), tau=10.0)
+    populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0, noise=0.0)
+    populations[:ctx_inh] = Population(floor(Int, 0.2*size), tau=10.0, noise=0.0)
+    populations[:str_dmsn] = Population(floor(Int, 0.5*size), tau=10.0, noise=0.0)
+    populations[:str_imsn] = Population(floor(Int, 0.5*size), tau=10.0, noise=0.0)
     populations[:snr] = Population(readout_size, tau=0.0, bias=1.0)
-    populations[:thal] = Population(readout_size*10, tau=0.0, bias=0.0)
+    populations[:thal] = Population(readout_size*10, tau=0.0, bias=0.0, noise=0.1)
 
     connect!(StaticSynapse, populations[:ctx_exc], populations[:ctx_exc],
              (pre, post)->25*rand()/sqrt(size), (pre, post)->0.1*(pre!=post))
@@ -75,6 +75,7 @@ function step!(net::BgNet; clamp::NamedTuple=NamedTuple())
         if pop in keys(clamp)
             net[pop].r = clamp[pop]
         end
+        net[pop].r .+= net[pop].noise*randn(size(net[pop]))
     end
 end
 

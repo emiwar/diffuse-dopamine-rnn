@@ -3,7 +3,7 @@ using Plots
 using ProgressMeter
 
 include("experiment.jl")
-net = BgNet(200, 2, 1e-2, 1e-1)
+net = BgNet(200, 2, 1e-3, 1e-2)
 input = create_input(size(net[:thal]), 200)
 target = 0.5 .+ 0.15*gaussianProcessTarget(200, 2, 20)
 input_fcn(t) = input[t, :]
@@ -28,4 +28,4 @@ for ep=1:n_trials
                     minorgrid=true, gridalpha=.25, minorgridalpha=.125)
     frame(anim, both_plt)
 end
-webm(anim, "anim_lr_0_1.webm")
+webm(anim, "anim_noise4.webm")
