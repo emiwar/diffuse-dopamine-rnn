@@ -129,9 +129,9 @@ end
 function Base.show(io::IO, net::BgNet)
     println(io, "BgNet")
     for pop in pop_order(net)
-        println("  $pop: $(size(net[pop])) units")
+        println(io, "  $pop: $(size(net[pop])) units")
     end
-    println("  Learning rate: $(net.eta)")
+    println(io, "  Learning rate: $(net.eta_snr), $(net.eta_str)")
 end
 
 Base.getindex(net::BgNet, pop::Symbol) = net.populations[pop]

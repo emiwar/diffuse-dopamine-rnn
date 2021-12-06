@@ -42,3 +42,5 @@ plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
 losses = readAsDataFrame("data/different_lambda_only_dopamine.h5")
 plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
 
+losses = readAsDataFrame("data/long_run3.h5", false)
+plotSeries(losses, :trial, :loss, :striatumUpdate, axis=:log, xlabel="Trial", ylabel="Error (MSE)", minorticks=true, minorgrid=true, gridalpha=.25, minorgridalpha=.125, dpi=300, xticks=10 .^ (0:5))

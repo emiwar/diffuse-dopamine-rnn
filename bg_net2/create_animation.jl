@@ -1,22 +1,31 @@
 using LinearAlgebra
 using Plots
 using ProgressMeter
-include("bg_net_v2.jl")
 
-T = 200
-base_period = 200
-target_fcn(t) = 0.25*[sin(2*pi*t/base_period)+0.5sin(4*pi*t/base_period)+0.25sin(8*pi*t/base_period),
-                 0.6*cos(2*pi*t/base_period)+1.0sin(4*pi*t/base_period)-0.5sin(8*pi*t/base_period)] .+ .5
-proj = randn(20, 2)
-proj = 4*(proj ./ sqrt.(sum(proj.^2, dims=2)))
-input_fcn(t) = phi.(proj*[cos(2*pi*t/base_period), sin(2*pi*t/base_period)])
-
-net = BgNet(500, 2, 2e-2)
-recordSampleRun(net, T, clamp=(thal=input_fcn,))
-p = Progress(1000)
-anim = @animate for ep=1:1000
-    next!(p)
-    plotTraces(recordSampleRun(net, T, target_fcn, clamp=(thal=input_fcn,)), target=target_fcn)
-    plot!(xlabel="Time (ms)", title="Trial $ep", size=(900, 900))
+include("experiment.jl")
+net = BgNet(200, 2, 1e-2, 1e-1)
+input = create_input(size(net[:thal]), 200)
+target = 0.5 .+ 0.15*gaussianProcessTarget(200, 2, 20)
+input_fcn(t) = input[t, :]
+target_fcn(t) = target[t, :]
+log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
+losses = [sum((log.snr - target').^2)]
+n_trials = 1000
+p = Progress(n_trials)
+ProgressMeter.ijulia_behavior(:clear)
+anim = Animation()
+for ep=1:n_trials
+    next!(p, showvalues=[(:loss, losses[end]), (:trial, ep)])
+    log = recordSampleRun(net, 200, target_fcn, clamp=(thal=input_fcn,))
+    tr_plt = plotTraces(log, target=target_fcn)
+    plot!(tr_plt, xlabel="Time (ms)", title="Trial $ep", ylim=(-1.2*5, 1.2))
+    #, size=(900, 900))    
+    push!(losses, sum((log.snr - target').^2))
+    ls_plt = plot(losses, xlabel="Trial", ylabel="Squared error", yaxis=:log,
+                  ylim=(0.1, 50.0), yticks=[0.1,1.0,10.0], xlim=(1,1000), legend=false)
+    l = @layout [a{0.7w} b]
+    both_plt = plot(tr_plt, ls_plt, layout=l, size=(1200, 800),minorticks=true,
+                    minorgrid=true, gridalpha=.25, minorgridalpha=.125)
+    frame(anim, both_plt)
 end
-webm(anim, "test_anim3.webm")
+webm(anim, "anim_lr_0_1.webm")
