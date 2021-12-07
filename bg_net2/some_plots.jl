@@ -44,3 +44,18 @@ plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log)
 
 losses = readAsDataFrame("data/long_run3.h5", false)
 plotSeries(losses, :trial, :loss, :striatumUpdate, axis=:log, xlabel="Trial", ylabel="Error (MSE)", minorticks=true, minorgrid=true, gridalpha=.25, minorgridalpha=.125, dpi=300, xticks=10 .^ (0:5))
+
+losses = readAsDataFrame("data/with_noise.h5", false)
+for lr=unique(losses.learning_rate), ff=unique(losses.feedback_factor)
+    filtered = losses[(losses.learning_rate .== lr) .& (losses.feedback_factor .== ff), :]
+    pl = plotSeries(filtered, :trial, :loss, :striatumUpdate, yaxis=:log, xlabel="Trial", ylabel="Squared error", minorticks=true, minorgrid=true, gridalpha=.25, minorgridalpha=.125, title="Lr: ($lr, $(lr*ff))")
+    display(pl)
+end
+
+
+losses = readAsDataFrame("data/with_noise.h5")
+for ff=unique(losses.feedback_factor)
+    filtered = losses[losses.feedback_factor .== ff, :]
+    pl = plotSeries(filtered, :learning_rate, :loss, :striatumUpdate, axis=:log, xlabel="Trial", ylabel="Squared error", minorticks=true, minorgrid=true, gridalpha=.25, minorgridalpha=.125, title="Feedback: $ff")
+    display(pl)
+end
