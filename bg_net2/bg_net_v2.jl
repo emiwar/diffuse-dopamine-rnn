@@ -73,9 +73,8 @@ function step!(net::BgNet; clamp::NamedTuple=NamedTuple())
     for pop in pop_order(net)
         step!(net[pop])
         if pop in keys(clamp)
-            net[pop].r = clamp[pop]
+            net[pop].r = clamp[pop] + net[pop].noise*randn(size(net[pop]))
         end
-        net[pop].r .+= net[pop].noise*randn(size(net[pop]))
     end
 end
 

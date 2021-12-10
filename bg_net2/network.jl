@@ -79,7 +79,7 @@ function step!(pop::Population)
         synapse.trace += (1-pop.alpha)*prePop.r[synapse.pre]*dr[post]
     end
     
-    pop.r = r
+    pop.r = r + pop.noise*randn(size(pop))
 end
 
 function updateWeights!(pop::Population, feedback, eta)
