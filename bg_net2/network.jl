@@ -36,8 +36,19 @@ mutable struct BalanceSynapse <: PlasticSynapse
     pre::UInt64
 end
 
+mutable struct AdamSynapse{sign} <: PlasticSynapse
+    weight::Float64
+    pre::UInt64
+    trace::Float64
+    m::Float64
+    v::Float64
+end
+
 EligabilitySynapse{s}(weight, pre) where s = EligabilitySynapse{s}(weight, pre, 0.0)
 Base.sign(::EligabilitySynapse{s}) where s = s
+
+AdamSynapse{s}(weight, pre) where s = AdamSynapse{s}(weight, pre, 0.0, 0.0, 0.0)
+Base.sign(::AdamSynapse{s}) where s = s
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -74,7 +85,7 @@ function step!(pop::Population)
     r = phi.(pop.v)
     dr = r .* (1 .- r) #(1 .- r.^2)
     
-    eachSynapse(pop, synapseType=EligabilitySynapse) do synapse, prePop, post
+    eachSynapse(pop, synapseType=Union{EligabilitySynapse, AdamSynapse}) do synapse, prePop, post
         synapse.trace *= pop.alpha
         synapse.trace += (1-pop.alpha)*prePop.r[synapse.pre]*dr[post]
     end
@@ -82,7 +93,7 @@ function step!(pop::Population)
     pop.r = r + pop.noise*randn(size(pop))
 end
 
-function updateWeights!(pop::Population, feedback, eta)
+function updateWeights!(pop::Population, feedback, eta, t)
     eachSynapse(pop, synapseType=EligabilitySynapse{1}) do synapse, prePop, post
         synapse.weight += eta*synapse.trace*feedback[post]
         synapse.weight = max(synapse.weight, 0)
@@ -96,6 +107,22 @@ function updateWeights!(pop::Population, feedback, eta)
         synapse.weight += eta*prePop.r[synapse.pre]*(-pop.v[post])
         synapse.weight = min(synapse.weight, 0.0)
         #synapse.weight *= (sgn*synapse.weight) >= 0
+    end
+    
+    for synSign in [1, -1]
+        eachSynapse(pop, synapseType=AdamSynapse{synSign}) do synapse, prePop, post
+            g = synapse.trace*feedback[post]
+            synapse.m = 0.9*synapse.m + 0.1*g
+            synapse.v = 0.999*synapse.v + 0.001*g*g
+            mhat = synapse.m / (1-0.9^t)
+            vhat = synapse.v / (1-0.999^t)
+            synapse.weight += eta*mhat/(sqrt(vhat)+1e-6)
+            if synSign == 1
+                synapse.weight = max(synapse.weight, 0)
+            else
+                synapse.weight = min(synapse.weight, 0)
+            end
+        end
     end
 end
 
