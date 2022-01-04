@@ -113,9 +113,9 @@ function updateWeights!(pop::Population, feedback, eta, t)
         eachSynapse(pop, synapseType=AdamSynapse{synSign}) do synapse, prePop, post
             g = synapse.trace*feedback[post]
             synapse.m = 0.9*synapse.m + 0.1*g
-            synapse.v = 0.999*synapse.v + 0.001*g*g
+            synapse.v = 0.99*synapse.v + 0.01*g*g
             mhat = synapse.m / (1-0.9^t)
-            vhat = synapse.v / (1-0.999^t)
+            vhat = synapse.v / (1-0.99^t)
             synapse.weight += eta*mhat/(sqrt(vhat)+1e-6)
             if synSign == 1
                 synapse.weight = max(synapse.weight, 0)
