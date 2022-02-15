@@ -11,7 +11,7 @@ mutable struct BgNet
     t::Int64
 end
 
-function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64; lambda=0.1, SynapseType::Type=AdamSynapse)
+function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64; lambda=0.1, SynapseType::Type=EligabilitySynapse)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0, noise=0.0)
@@ -90,6 +90,14 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
         updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t)
         updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t)
+    elseif updateStriatum==:flat_dopamine
+        postFactor = net[:snr].r .* (1 .- net[:snr].r)
+        feedback_dmsn =  (net.feedback_dmsn)*(error .* postFactor)
+        feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
+        feedback_dmsn_flat = mean(feedback_dmsn) .* ones(size(net[:str_dmsn]))
+        feedback_imsn_flat = mean(feedback_imsn) .* ones(size(net[:str_imsn]))
+        updateWeights!(net[:str_dmsn], feedback_dmsn_flat, net.eta_str, net.t)
+        updateWeights!(net[:str_imsn], feedback_imsn_flat, net.eta_str, net.t)
     elseif updateStriatum==:ideal
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)

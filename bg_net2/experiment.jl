@@ -27,13 +27,13 @@ const DEFAULT_PARAMS = (net_size=200, trial_length=200,
                         target_dim=2, target_tau=20.0, lambda=0.1,
                         n_trials=1000, striatumUpdate=:dopamine,
                         learning_rate=1e-3, feedback_factor=25,
-                        synapseType=AdamSynapse, repetition=1)
+                        synapseType=EligabilitySynapse, repetition=1)
 
 function train_network(desc::String; net_size=200, trial_length=200,
                         target_dim=2, target_tau=20.0, lambda=0.1,
                         n_trials=1000, striatumUpdate=:dopamine,
                         learning_rate=1e-3, feedback_factor=25,
-                        synapseType=AdamSynapse, repetition=1)
+                        synapseType=EligabilitySynapse, repetition=1)
     net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda, SynapseType=synapseType)
     input = create_input(size(net[:thal]), trial_length)
     target = 0.5 .+ 0.15*gaussianProcessTarget(trial_length, target_dim, target_tau)
