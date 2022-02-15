@@ -1,6 +1,6 @@
 using LinearAlgebra
 using Distributions
-using CairoMakie
+using GLMakie
 using Colors
 using Images
 
@@ -25,11 +25,23 @@ function get_positions(net::BgNet)
     positions = Dict{Symbol, Vector{Point3f}}()
     positions[:str_dmsn] = [Point3f(net.str_dmsn_pos[i, :]) for i=1:size(net[:str_dmsn])]
     positions[:str_imsn] = [Point3f(net.str_imsn_pos[i, :]) for i=1:size(net[:str_imsn])]
-    positions[:ctx_exc] = rand(Point3f, size(net[:ctx_exc])) .+ Point3f([0.0, 0, 1.7])
-    positions[:ctx_inh] = rand(Point3f, size(net[:ctx_inh])) .+ Point3f([0.0, 0, 1.7])
+    positions[:ctx_exc] = [Point3f(rand(), rand(), 1.5 + rand()) for i=1:size(net[:ctx_exc])]
+    positions[:ctx_inh] = [Point3f(rand(), rand(), 1.5 + rand()) for i=1:size(net[:ctx_inh])]
     positions[:thal] = [Point3f([-0.5, i/20.0, 1.0]) for i=1:size(net[:thal])]
     positions[:snr] = [Point3f([0.5, 1/6+i/3, -1.0]) for i=1:size(net[:snr])]
     return positions
+end
+
+function plot_labels!()
+    rot = Quaternion(0.5, 0.5, 0.5, 0.5)
+    text!("GPi/SNr", position=Point3f([0.8, 0.7, -1]), space=:data,
+          textsize=0.15, rotation=rot, color=:gray35, align=(:center, :center))
+    text!("Striatum", position=Point3f([1.5, 0.7, 0.75]), space=:data,
+          textsize=0.15, rotation=rot, color=:gray35, align=(:center, :center))
+    text!("Cortex", position=Point3f([1.5, 0.7, 2.25]), space=:data,
+          textsize=0.15, rotation=rot, color=:gray35, align=(:center, :center))
+    text!("Thalamus", position=Point3f([-0.5, 0.5, 1.25]), space=:data,
+          textsize=0.15, rotation=rot, color=:gray35, align=(:center, :center))
 end
 
 function animate_activity(filename::String, net::BgNet, log; framerate=20)
@@ -56,28 +68,36 @@ function animate_activity(filename::String, net::BgNet, log; framerate=20)
     
     scatters = Dict{Symbol, Makie.Scatter}()
     set_theme!(theme_black(), backgroundcolor=(:black, 1.0))
-    #fig = Figure()
-    #Axis3(fig[1, 1]; perspectiveness=1.0)
-    fig = Figure(resolution=(400, 1000))
-    axs, = scatter(fig[1,1], [Point3f([0,0,0]), Point3f([1,1,1])], markersize=0)
+    #fig = Figure(resolution=(800, 1000))
+    #axs = Axis3(fig[1, 1]; perspectiveness=1.0, aspect=:data, viewmode=:fitzoom,
+    #            rotation=Billboard(), azimuth=0.0, elevation=0.0)
+    fig = Figure(resolution=(600, 1000))#,camera = cam3d!)
+    axs, = scatter(fig[1,1], [Point3f([0,0,0]), Point3f([1,1,1])], markersize=0,
+                   transparency=true, axis=(viewmode=:fitzoom,))
     for pop=pop_order(net)
-         scatters[pop] = scatter!(positions[pop], color=log[pop][:, 1], markersize=5,
-                                  colormap = :inferno, colorrange=(0.0, 1.0))
+         scatters[pop] = scatter!(positions[pop], color=log[pop][:, 1], markersize=20,
+                                  colormap = :inferno, colorrange=(0.0, 1.0), transparency=true)
     end
-    linesegments!(connections, linewidth=0.5, color=colors)
+    plot_labels!()
+    linesegments!(connections, linewidth=.5, color=colors, transparency=true)
+    
+    
+    
+    Makie.scale!(fig.scene, 1.2, 1.2, 1.2)
     record(fig, filename; framerate=20) do io
         @showprogress "Animating $filename" for t = 1:200
             for pop in pop_order(net)
                 scatters[pop].color = log[pop][:, t]
             end
             recordframe_withfilter!(io) do frame
-                blur = imfilter(frame .* (Gray.(frame) .> 0.4), Kernel.gaussian(2))
+                blur = imfilter(frame .* (Gray.(frame) .> 0.5), Kernel.gaussian(1.5))
                 clamp01.(frame + 2*blur)
             end
         end
     end
+    fig
 end
-    
+
 
 
 net = BgNet(200, 2, 1e-3, 25*1e-3, SynapseType=EligabilitySynapse)
@@ -87,7 +107,7 @@ input_fcn(t) = input[t, :]
 target_fcn(t) = target[t, :]
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
-animate_activity("full_net_anim_untrained.mp4", net, log)
+animate_activity("full_net_anim_untrained_GL.mp4", net, log)
 
 #net, losses = train_network("Training network", synapseType=EligabilitySynapse)
 #log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
@@ -98,7 +118,7 @@ losses = Float64[]
 end
 
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
-animate_activity("full_net_anim_trained.mp4", net, log)
+animate_activity("full_net_anim_trained_GL.mp4", net, log)
 #points = rand(Point3f, 200)
 #segs = Point3f[]
 #for i=1:length(points), j=1:length(points)
@@ -135,3 +155,22 @@ animate_activity("full_net_anim_trained.mp4", net, log)
 #        recordframe_withbloom!(io)
 #    end
 #end
+
+colormap = [RGBAf(0,(i>12) ? (i-12)/10 : 0,0,(i>10) ? (i-10)/10 : 0) for i=1:20]
+r = LinRange(-0.2,1.2,30)
+centers = rand(Point3f, 5)
+function getDop(x, y, z)
+    dop = 0
+    for i=1:size(centers,1)
+        dx = x .- centers[i][1]
+        dy = y .- centers[i][2]
+        dz = z .- centers[i][3]
+        dop += exp(-sqrt((dx*dx + dy*dy + dz*dz)/0.1))
+    end
+    dop
+end
+dop = [0.6*getDop(x,y,z) for x=r, y=r, z=r]
+fig = Figure()
+axs, = scatter(fig[1,1], centers, color=colorant"green", transparency=true, markersize=20)
+vol = volume!(fig[1,1], r, r, r, dop, algorithm = :mip, transparency=true, colormap=colormap)
+fig
