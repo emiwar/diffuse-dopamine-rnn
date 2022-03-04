@@ -166,7 +166,7 @@ function plotHeatmaps(log::NamedTuple)
     yticks = Float64[]
     p = plot()
     for pop in keys(log)
-        dy = size(log[pop], 1)
+        dy, T = size(log[pop])
         heatmap!(p, 1:T, y:(y+dy-1), log[pop], clim=(0, 1))
         push!(yticks, y+0.5dy)
         y += dy+5
@@ -174,7 +174,7 @@ function plotHeatmaps(log::NamedTuple)
     plot!(p, yticks=(yticks, keys(log)))
 end
 
-function plotTraces(log::NamedTuple; target=nothing)
+function plotTraces(log::NamedTuple; target=nothing, labels=nothing)
     y = 0
     yticks = Float64[]
     p = plot(size=(700, 800), fmt=:png)
@@ -191,7 +191,10 @@ function plotTraces(log::NamedTuple; target=nothing)
         push!(yticks, y+0.6)
         y -= 1.2
     end
-    plot!(p, yticks=(yticks, keys(log)), xlim=(1, T), legend=false)
+    if labels==nothing
+        labels = keys(log)
+    end
+    plot!(p, yticks=(yticks, labels), xlim=(1, T), legend=false)
 end
 
 plotHeatmaps(net::BgNet, T::Integer) = plotHeatmaps(recordSampleRun(net, T))

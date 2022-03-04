@@ -59,3 +59,13 @@ for ff=unique(losses.feedback_factor)
     pl = plotSeries(filtered, :learning_rate, :loss, :striatumUpdate, axis=:log, xlabel="Trial", ylabel="Squared error", minorticks=true, minorgrid=true, gridalpha=.25, minorgridalpha=.125, title="Feedback: $ff")
     display(pl)
 end
+
+
+losses = readAsDataFrame("data/test_flat_dopamine3.h5", false)
+for target_dim = [1,2,5,10]
+    subset = losses[losses.target_dim .== target_dim, :]
+    if size(subset, 1) > 0
+        pl = plotSeries(subset, :trial, :loss, :striatumUpdate, yaxis=:log, title="Target dim $target_dim")
+        display(pl)
+    end
+end
