@@ -22,18 +22,18 @@ target = 0.5 .+ 0.15*gaussianProcessTarget(200, 4, 20)
 input_fcn(t) = input[t, :]
 target_fcn(t) = target[t, :]
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
-save_log("data/exampleRun.h5", "warmup", log)
+#save_log("data/exampleRun.h5", "warmup", log)
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
-save_log("data/exampleRun.h5", "first_trial", log)
+#save_log("data/exampleRun.h5", "first_trial", log)
 losses = Float64[]
 @showprogress for trial_id=1:5000
     loss = run_trial(net, target, input, :dopamine)
     push!(losses, loss)
 end
 log = recordSampleRun(net, 200, clamp=(thal=input_fcn,))
-save_log("data/exampleRun.h5", "last_trial", log; n_trials=5000, 
-         learning_rate=1e-3, net_size=200, ntrial_length=200, git=git_commit,
-         striatumUpdate=:dopamine)
+#save_log("data/exampleRun.h5", "last_trial", log; n_trials=5000, 
+#         learning_rate=1e-3, net_size=200, ntrial_length=200, git=git_commit,
+#         striatumUpdate=:dopamine)
 
 h5open("data/exampleRun.h5", "cw") do fid
     fid["losses"] = losses

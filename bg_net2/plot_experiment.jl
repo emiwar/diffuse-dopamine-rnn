@@ -29,7 +29,8 @@ function readAsDataFrame(fn, onlyFinal=true)
 end
 
 function plotSeries!(df::DataFrame, x::Symbol, y::Symbol, group::Symbol;
-                     labels=Dict{String, String}(), kwargs...)
+                     labels=Dict{String, String}(),
+                     colors=Dict{String, RGB}(), kwargs...)
     
     for g in unique(df[:, group])
         filtered = df[df[:, group] .== g, :]
@@ -40,8 +41,9 @@ function plotSeries!(df::DataFrame, x::Symbol, y::Symbol, group::Symbol;
         ribbon = (combined[:, :mu]-combined[:, :low_q],
                   combined[:, :high_q]-combined[:, :mu])
         label = g in keys(labels) ? labels[g] : string(g)
+        
         plot!(combined[:, x], combined[:, :mu],
-              ribbon=ribbon, label=label)
+              ribbon=ribbon, label=label, c=colors[g])
     end
     plot!(;kwargs...)
 end
