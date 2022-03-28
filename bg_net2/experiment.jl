@@ -38,11 +38,13 @@ function train_network(desc::String; net_size=200, trial_length=200,
     input = create_input(size(net[:thal]), trial_length)
     target = 0.5 .+ 0.15*gaussianProcessTarget(trial_length, target_dim, target_tau)
     losses = Float64[]
+    angles = Float64[]
     @showprogress desc for trial_id=1:n_trials
         loss = run_trial(net, target, input, striatumUpdate)
         push!(losses, loss)
+        push!(angles, getAlignmentAngle(net))
     end
-    return net, losses
+    return net, losses, angles
 end
 
 function run_experiment(fn; params...)
@@ -54,7 +56,7 @@ function run_experiment(fn; params...)
             named_params = merge(named_params, (;feedback_factor = named_params.feedback_factor*10.0))
         end
         all_params = merge(DEFAULT_PARAMS, named_params)
-        net, losses = train_network("$named_params "; all_params...)
+        net, losses, angles = train_network("$named_params "; all_params...)
         h5open(fn, "cw") do fid
             fid["run$i"] = losses
             for k in keys(all_params)

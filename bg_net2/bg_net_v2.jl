@@ -206,3 +206,11 @@ function gaussianProcessTarget(duration, ndim, tau; eps=1e-6)
     cov = exp.(-(dists.^2)./(tau^2))
     return rand(MvNormal(zeros(duration), cov+eps*I), ndim)
 end 
+
+function getAlignmentAngle(net::BgNet)
+    fb = vcat(-net.feedback_dmsn[:], net.feedback_imsn[:])
+    wm_dmsn = getWeightMatrix(net[:str_dmsn], net[:snr])'[:]
+    wm_imsn = getWeightMatrix(net[:str_imsn], net[:snr])'[:]
+    wm = vcat(wm_dmsn, wm_imsn)
+    (fb'*wm)/norm(fb)/norm(wm)
+end
