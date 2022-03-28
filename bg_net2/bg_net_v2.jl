@@ -11,7 +11,8 @@ mutable struct BgNet
     t::Int64
 end
 
-function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64; lambda=0.1, SynapseType::Type=EligabilitySynapse)
+function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64;
+               lambda=0.1, SynapseType::Type=EligabilitySynapse, n_varicosities=10)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0, noise=0.0)
@@ -57,8 +58,8 @@ function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::
              (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
     str_dmsn_pos = rand(Base.size(populations[:str_dmsn]), 3)
     str_imsn_pos = rand(Base.size(populations[:str_imsn]), 3)
-    feedback_dmsn = createFeedbackMatrix(str_dmsn_pos, readout_size, lambda=lambda)
-    feedback_imsn = createFeedbackMatrix(str_imsn_pos, readout_size, lambda=lambda)
+    feedback_dmsn = createFeedbackMatrix(str_dmsn_pos, readout_size, lambda=lambda, n_varicosities=n_varicosities)
+    feedback_imsn = createFeedbackMatrix(str_imsn_pos, readout_size, lambda=lambda, n_varicosities=n_varicosities)
     
     balanceWeights!(populations[:ctx_exc])
     balanceWeights!(populations[:ctx_inh])
