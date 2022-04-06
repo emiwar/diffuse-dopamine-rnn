@@ -36,7 +36,7 @@ function train_network(desc::String; net_size=200, trial_length=200,
                         learning_rate=1e-3, feedback_factor=25,
                         synapseType=EligabilitySynapse, n_varicosities=10,
                         repetition=1)
-    net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda, SynapseType=synapseType)
+    net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda, SynapseType=synapseType, n_varicosities=n_varicosities)
     input = create_input(size(net[:thal]), trial_length)
     target = 0.5 .+ 0.15*gaussianProcessTarget(trial_length, target_dim, target_tau)
     losses = Float64[]

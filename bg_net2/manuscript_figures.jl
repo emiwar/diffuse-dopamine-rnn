@@ -3,7 +3,7 @@ include("plot_experiment.jl")
 fontsize=5*2
 
 losses = readAsDataFrame("data/flat_dopamine_dim_3_and_4.h5", false)
-losses = losses[losses.target_dim .== 3, :]
+losses = losses[losses.target_dim .== 4, :]
 labels = Dict("dopamine" => "Heterogenous dopamine",
               "flat_dopamine" => "Homogenous dopamine",
               "no_dopamine" => "No corticostrital plasticity")
@@ -108,5 +108,35 @@ savefig(combined, "manuscript_figs/example_run.svg")
 dopamine_falloff = plot(d->exp(-d/0.1), xlim=(0, 1), legend=false, xlabel="Distance (cube sides)", ylabel="Relative\ndopamine", size=(250, 150), dpi=200, xticks=[0, 0.5, 1.0], yticks=[0, 0.5, 1.0], labelfontsize=fontsize, legendfontsize=fontsize, tickfontsize=fontsize, linewidth=2, color=:darkgreen, minorgrid=true)
 savefig(dopamine_falloff, "manuscript_figs/dopamine_falloff.svg")
 
-transfer_fcn = plot(V->phi(V), xlim=(-8, 8), legend=false, xlabel="V(t)", ylabel="r(t)", size=(250, 150), dpi=200, xticks=-8:4:8, yticks=[0, 0.5, 1.0], labelfontsize=fontsize, legendfontsize=fontsize, tickfontsize=fontsize, linewidth=2, minorgrid=true)
+transfer_fcn = plot(V->phi(V), xlim=(-8, 8), legend=false, xlabel="V(t)", ylabel="r(t)",
+                    size=(200, 120), dpi=200, xticks=-8:4:8, yticks=[0, 0.5, 1.0],
+                    labelfontsize=fontsize, legendfontsize=fontsize, tickfontsize=fontsize,
+                    linewidth=2, gridalpha=.4,
+                    minorticks=true, minorgrid=true, minorgridalpha=.2)
 savefig(transfer_fcn, "manuscript_figs/transfer_fnc.svg")
+
+conns = [("Thal → Ctx_e", 0.2),
+        ("Thal → Ctx_i", 0.2),
+        ("Ctx_e → Ctx_e", 0.1),
+        ("Ctx_e → Ctx_i", 0.1),
+        ("Ctx_i → Ctx_e", 0.4),
+        ("Ctx_i → Ctx_e", 0.4),
+        ("Ctx_e → Str_d1", 0.2),
+        ("Ctx_e → Str_d2", 0.2),
+        ("Thal → Str_d1", 0.25),
+        ("Thal → Str_d2", 0.25),
+        ("Str_d1 → Str_d1", 0.2),
+        ("Str_d1 → Str_d2", 0.2),
+        ("Str_d2 → Str_d1", 0.2),
+        ("Str_d2 → Str_d2", 0.2),
+        ("Str_d1 → SNr", 1.0),
+        ("Str_d2 → SNr", 1.0)]
+#yticks = [(i, conns[i][1]) for i=1:length(conns)]
+conn_bars = bar(1:16, getindex.(conns, 2), orientation=:h,
+    yticks=(1:length(conns), getindex.(conns, 1)),
+    xticks=[0.0,0.5,1.0], ylim=(0.3,16.7), xlim=(0,1),
+    yflip=true, xlabel="P(connection)", legend=false,
+    gridalpha=.4, #minorticks=:x, minorgrid=:x, minorgridalpha=.2,
+    labelfontsize=fontsize, tickfontsize=fontsize, legendfontsize=fontsize,
+    size=(1.3*dpi, 1.4*dpi), dpi=dpi, left_margin=10mm)
+savefig(conn_bars, "manuscript_figs/conn_bars.svg")

@@ -69,3 +69,23 @@ for target_dim = [1,2,5,10]
         display(pl)
     end
 end
+
+
+losses = readAsDataFrame("data/test_n_varicosities.h5", true)
+for n_var = unique(losses.n_varicosities)
+    subset = losses[losses.n_varicosities .== n_var, :]
+    pl = plotSeries(subset, :lambda, :loss, :striatumUpdate,
+                    title="N_var = $n_var", labels = Dict("dopamine" => "Dopamine"), axis=:log, ylim=(1e-2, 1e1))
+    display(pl)
+end
+
+
+gby = groupby(losses, [:n_varicosities, :lambda]) 
+cmb = combine(gby, :loss => median)
+ust = unstack(cmb, :n_varicosities, :lambda, :loss_median)
+
+xlabels = [parse(Float64, c) for c in names(ust)[2:end]]
+ylabels = ust.n_varicosities
+values = Matrix{Float64}(ust[:, Not(:n_varicosities)])
+heatmap(xlabels, ylabels, -log10.(values), axis=:log,
+        caxis=:log, xlabel="Spatial scale", ylabel="varicosities/cell")
