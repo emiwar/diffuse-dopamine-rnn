@@ -103,12 +103,12 @@ function ConstrainedBgNet(size::Integer, readout_size::Integer, eta_snr::Float64
     connect!(StaticSynapse, populations[:thal], populations[:ctx_inh],
              (pre, post)->50*rand()/Base.size(populations[:thal]), 0.2)
     
-    if str_snr == :plastic
+    if thal_str == :plastic
         connect!(EligabilitySynapse{1}, populations[:thal], populations[:str_dmsn],
                  (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
         connect!(EligabilitySynapse{1}, populations[:thal], populations[:str_imsn],
                  (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
-    elseif str_snr == :static
+    elseif thal_str == :static
         connect!(StaticSynapse, populations[:thal], populations[:str_dmsn],
                  (pre, post)->30*rand()/Base.size(populations[:thal]), 0.25)
         connect!(StaticSynapse, populations[:thal], populations[:str_imsn],

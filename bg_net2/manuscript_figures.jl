@@ -140,3 +140,44 @@ conn_bars = bar(1:16, getindex.(conns, 2), orientation=:h,
     labelfontsize=fontsize, tickfontsize=fontsize, legendfontsize=fontsize,
     size=(1.3*dpi, 1.4*dpi), dpi=dpi, left_margin=10mm)
 savefig(conn_bars, "manuscript_figs/conn_bars.svg")
+
+losses = readAsDataFrame("data/constraint_exp_full.h5")
+losses[!, :x_coord] .= -1
+
+types = ["plastic", "static", "absent"]
+
+legend = zeros(4, 3^4)
+i = 1
+for str_snr=1:3, str_str=1:3, thal_str=1:3, ctx_str=1:3
+    legend[1, i] = str_snr
+    legend[2, i] = str_str
+    legend[3, i] = thal_str
+    legend[4, i] = ctx_str
+    filter = (losses.str_snr .== types[str_snr]) .&
+             (losses.str_str .== types[str_str]) .&
+             (losses.thal_str .== types[thal_str]) .&
+             (losses.ctx_str .== types[ctx_str])
+    losses[filter, :x_coord] .= i
+    i += 1
+end
+
+colors = [:green, :blue, :darkred]
+p2 = boxplot(losses.x_coord, losses.loss,
+             group=losses.x_coord, yaxis=:log,
+             xticks=[], label=nothing, minorticks=true, minorgrid=true,
+             gridalpha=.4, minorgridalpha=.2, color=:blue,
+             ylabel="Squared loss")
+hm = heatmap(legend, colorbar=false, c=colors)
+for i=0:(3^4)+1
+    plot!(hm, [i, i] .- 0.5, [0.5,4.5], color=:white, legend=false, lw=3)
+end
+for i=0:4
+    plot!(hm, [0.5, 3^4+0.5], [i, i] .+ 0.5, color=:white, legend=false, lw=3)
+end
+yticks = ["Str → SNr", "Str → Str", "Thal → Str", "Ctx → Str"]
+plot!(hm, showaxis=false, xticks=[], yticks=(1:4, yticks))
+l =  @layout [a; b{0.25h}]
+full_constr = plot(p2, hm, layout=l, xlim=(0, 3^4+1), size=(6.5*200, 1.5*200), dpi=200,
+     labelfontsize=fontsize, tickfontsize=fontsize, legendfontsize=fontsize)
+
+savefig(full_constr, "manuscript_figs/full_constraints_5samples.svg")
