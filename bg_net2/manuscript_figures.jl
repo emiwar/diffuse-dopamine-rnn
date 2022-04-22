@@ -22,17 +22,7 @@ p2 = boxplot(final_losses.striatumUpdate, final_losses.loss,
              linecolor=reshape(get_color_palette(:auto, :white)[1:3], 1, 3),
              whisker_range=10.0)
 
-losses = readAsDataFrame("data/vary_lambda_dim4.h5", true)
-plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log, labels=labels)
-losses = readAsDataFrame("data/vary_lambda_dim4_flat_dopamine.h5", true)
-plotSeries!(losses, :lambda, :loss, :striatumUpdate, axis=:log, labels=labels)
-lambda_plot = plot!(xlabel="Dopamine spatial constant", ylabel="Squared error",
-      minorticks=true, minorgrid=true, gridalpha=.4,
-      minorgridalpha=.2,
-      labelfontsize=fontsize, legendfontsize=fontsize, 
-      tickfontsize=fontsize, titlefontsize=fontsize, dpi=200,
-      xticks=10.0 .^ (-3:2), size=(400, 250))
-savefig(lambda_plot, "manuscript_figs/lambda.svg")
+
 
 labels = ["Thalamus", "Cortex\n(exc.)", "Cortex\n(inh.)", "Striatum\n(dSPNs)",
               "Striatum\n(iSPNs)", "SNr", "SNc"]
@@ -163,10 +153,10 @@ end
 
 colors = [:green, :blue, :darkred]
 p2 = boxplot(losses.x_coord, losses.loss,
-             group=losses.x_coord, yaxis=:log,
+             group=losses.x_coord, yaxis=:log, yticks=10.0 .^ (-2:2),
              xticks=[], label=nothing, minorticks=true, minorgrid=true,
              gridalpha=.4, minorgridalpha=.2, color=:blue,
-             ylabel="Squared loss")
+             ylabel="Squared loss", whisker_range=10.0)
 hm = heatmap(legend, colorbar=false, c=colors)
 for i=0:(3^4)+1
     plot!(hm, [i, i] .- 0.5, [0.5,4.5], color=:white, legend=false, lw=3)
@@ -180,4 +170,112 @@ l =  @layout [a; b{0.25h}]
 full_constr = plot(p2, hm, layout=l, xlim=(0, 3^4+1), size=(6.5*200, 1.5*200), dpi=200,
      labelfontsize=fontsize, tickfontsize=fontsize, legendfontsize=fontsize)
 
-savefig(full_constr, "manuscript_figs/full_constraints_5samples.svg")
+savefig(full_constr, "manuscript_figs/full_constraints_25samples.svg")
+
+#heatmap(legend', c=colors, size=(100, 1000), colorbar=false, yticks=1:(3^4), left_margin=10mm)
+subselection = [1, 2, 4, 10, 28, 13, 14, 41, 3, 7, 19, 55, 9, 81]
+sublosses = losses[[(x in subselection) for x in losses.x_coord], :]
+sublosses[!, :x_coord] .= [findfirst(i->(i==x), subselection) for x in sublosses.x_coord]
+p3 = boxplot(sublosses.x_coord, sublosses.loss,
+             group=sublosses.x_coord, yaxis=:log, yticks=10.0 .^ (-2:2),
+             xticks=[], label=nothing, minorticks=true, minorgrid=true,
+             gridalpha=.4, minorgridalpha=.2, color=RGBA(0, 0, 0, 0.2),
+             ylabel="Squared error", whisker_range=10.0,
+             xlim=(0, length(subselection)+1))
+hm = heatmap(legend[:, subselection], colorbar=false, c=colors,
+             showaxis=false, xticks=[], yticks=(1:4, yticks),
+             xlim=(0, length(subselection)+1))
+for i=0:length(subselection)+1
+    plot!(hm, [i, i] .- 0.5, [0.5,4.5], color=:white, legend=false, lw=3)
+end
+for i=0:4
+    plot!(hm, [0.5, length(subselection)+0.5], [i, i] .+ 0.5, color=:white, legend=false, lw=3)
+end
+
+losses = readAsDataFrame("data/random_feedback.h5", false)[end:-1:1, :]
+labels = Dict("dopamine" => "Dopamine feedback",
+              "random" => "Random feedback",
+              "ideal" => "Ideal feedback",
+              "no_dopamine" => "No feedback")
+colors_d = Dict("dopamine" => colorant"#269d26",
+                "random" => colorant"#1a54a6",
+                "ideal" => colorant"orange",
+                "no_dopamine" => colorant"#820655")
+order = ["dopamine", "ideal", "no_dopamine", "random"]
+p1 = plotSeries(losses, :trial, :loss, :striatumUpdate, yaxis=:log,
+           xlabel="Trial", ylabel="Squared error",
+           labels=labels, minorticks=true, minorgrid=true, gridalpha=.4,
+           minorgridalpha=.2, ylim=(1e-2, 1e2), fg_legend=nothing, left_margin=10mm,
+           colors=colors_d)
+final_losses = losses[losses.trial .== 5000, [:striatumUpdate, :loss]]
+colors = [RGBA(colors_d[l], 0.6) for l in order]
+linecolors = [colors_d[l] for l in order]
+p2 = boxplot(final_losses.striatumUpdate, final_losses.loss,
+             group=final_losses.striatumUpdate, yaxis=:log, ylim=(1e-2, 1e2),
+             xticks=[], label=nothing, minorticks=true, minorgrid=true,
+             gridalpha=.4, minorgridalpha=.2, showaxis=:x, formatter=(y)->"",
+             color=reshape(colors, 1, 4),
+             linecolor=reshape(linecolors, 1, 4),
+             whisker_range=10.0)
+
+labels = Dict("dopamine" => "Heterogenous dopamine",
+              "flat_dopamine" => "Homogenous dopamine")
+colors_d = Dict("dopamine" => colorant"#269d26",
+                "flat_dopamine" => colorant"#1a54a6")
+losses = readAsDataFrame("data/vary_lambda_dim4.h5", true)
+plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log, labels=labels, colors=colors_d)
+losses = readAsDataFrame("data/vary_lambda_dim4_flat_dopamine.h5", true)
+plotSeries!(losses, :lambda, :loss, :striatumUpdate, axis=:log, labels=labels, colors=colors_d)
+lambda_plot = plot!(ylabel="Squared error",
+      minorticks=true, minorgrid=true, gridalpha=.4,
+      minorgridalpha=.2,
+      xticks=10.0 .^ (-3:2)) #, size=(400, 250))
+#savefig(lambda_plot, "manuscript_figs/lambda.svg")
+
+losses = readAsDataFrame("data/test_n_varicosities.h5", true)
+gby = groupby(losses, [:n_varicosities, :lambda]) 
+cmb = combine(gby, :loss => median)
+ust = unstack(cmb, :n_varicosities, :lambda, :loss_median)
+xlabels = [parse(Float64, c) for c in names(ust)[2:end]]
+ylabels = ust.n_varicosities
+values = Matrix{Float64}(ust[:, Not(:n_varicosities)])
+hm2 = heatmap(xlabels, ylabels, -log10.(values), axis=:log,
+              caxis=:log, xlabel="Dopamine  ",
+              ylabel="Varicosities per SNc cell",
+              yticks=10 .^ (0:3), xticks=10.0 .^ (-3:2),
+              cticks=[-1,0,1,2], clim=(-1,2), colorbar=false)
+
+first_eig, lambdas = h5open("data/first_eig_per_lambda.h5", "r") do fid
+    read(fid["first_eig"]), read(fid["lambdas"])
+end
+m = median(first_eig, dims=2)[:,1]
+low_q = [quantile(first_eig[i,:], 0.25) for i=1:size(first_eig,1)][:,1]
+high_q = [quantile(first_eig[i,:], 0.75) for i=1:size(first_eig,1)][:,1]
+eig_plot = plot(lambdas, m, ribbon=(m-low_q, high_q-m),
+     xaxis=:log, legend=false, xticks=10.0 .^ (-3:2),
+     minorticks=true, minorgrid=true, gridalpha=.4,
+     minorgridalpha=.2, ylim=(-10, 400), color=colors_d["dopamine"])
+
+l =  @layout [a{0.3w} b{0.03w} [c{0.95h, 0.9w}; d{0.18h, 0.9w}] [e{0.8w}; f] [g{1.0w, 0.8h};]]
+fig2 = plot(p1, p2, p3, hm, lambda_plot, eig_plot, hm2, layout=l, size=(7.5*200, 1.8*200), dpi=200,
+     labelfontsize=fontsize, tickfontsize=fontsize, legendfontsize=fontsize, bottom_margin=10mm)
+savefig(fig2, "manuscript_figs/fig2_draft.svg")
+
+
+losses = readAsDataFrame("data/lin_ind_corr.h5")
+scatter(losses.feedback_eig1, losses.loss)
+corspearman(losses.feedback_eig1, losses.loss)
+
+
+losses = readAsDataFrame("data/adam_dim4.h5", false)
+losses = losses[(losses.synapseType .== "AdamSynapse") .&
+                (losses.striatumUpdate .== "dopamine"), :]
+plotSeries(losses, :trial, :loss, :striatumUpdate, yaxis=:log,
+           labels=Dict("dopamine" => "ADAM-RFLO"))
+losses = readAsDataFrame("data/flat_dopamine_dim_3_and_4.h5", false)
+losses = losses[(losses.target_dim .== 4) .& (losses.striatumUpdate .== "dopamine"), :]
+p1 = plotSeries!(losses, :trial, :loss, :striatumUpdate, yaxis=:log,
+           xlabel="Trial", ylabel="Squared error",
+           labels=Dict("dopamine" => "RFLO"), minorticks=true,
+           minorgrid=true, gridalpha=.4, colors=colors_d,
+           minorgridalpha=.2, ylim=(1e-2, 1e2), fg_legend=nothing, left_margin=10mm)

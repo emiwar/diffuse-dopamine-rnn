@@ -37,6 +37,9 @@ function train_network(desc::String; net_size=200, trial_length=200,
                         synapseType=EligabilitySynapse, n_varicosities=10,
                         repetition=1)
     net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda, SynapseType=synapseType, n_varicosities=n_varicosities)
+    if striatumUpdate == :random
+        randomizeFeedback!(net)
+    end
     input = create_input(size(net[:thal]), trial_length)
     target = 0.5 .+ 0.15*gaussianProcessTarget(trial_length, target_dim, target_tau)
     losses = Float64[]
@@ -55,7 +58,7 @@ function run_experiment(fn; params...)
     for (i, values) in enumerate(product(param_ranges...))
         named_params = NamedTuple{keys(param_ranges)}(values)
         if named_params.striatumUpdate == :ideal
-            named_params = merge(named_params, (;feedback_factor = named_params.feedback_factor*10.0))
+            named_params = merge(named_params, (;feedback_factor = named_params.feedback_factor*4.0))
         end
         all_params = merge(DEFAULT_PARAMS, named_params)
         net, losses, angles = train_network("$named_params "; all_params...)

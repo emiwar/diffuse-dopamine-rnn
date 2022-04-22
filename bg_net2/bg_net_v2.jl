@@ -99,6 +99,12 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         feedback_imsn_flat = mean(feedback_imsn) .* ones(size(net[:str_imsn]))
         updateWeights!(net[:str_dmsn], feedback_dmsn_flat, net.eta_str, net.t)
         updateWeights!(net[:str_imsn], feedback_imsn_flat, net.eta_str, net.t)
+    elseif updateStriatum==:random
+        postFactor = net[:snr].r .* (1 .- net[:snr].r)
+        feedback_dmsn = -(net.feedback_dmsn)*(error .* postFactor)
+        feedback_imsn = -(net.feedback_imsn)*(error .* postFactor)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t)
     elseif updateStriatum==:ideal
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn = -(getWeightMatrix(net[:str_dmsn], net[:snr]))'*(error .* postFactor)
@@ -214,4 +220,11 @@ function getAlignmentAngle(net::BgNet)
     wm_imsn = getWeightMatrix(net[:str_imsn], net[:snr])'[:]
     wm = vcat(wm_dmsn, wm_imsn)
     (fb'*wm)/norm(fb)/norm(wm)
+end
+
+function randomizeFeedback!(net::BgNet)
+    fb = vcat(net.feedback_dmsn, -net.feedback_imsn)
+    fb = shuffle(fb)
+    net.feedback_dmsn .= fb[1:size(net.feedback_dmsn, 1), :]
+    net.feedback_imsn .= fb[size(net.feedback_dmsn, 1)+1:end, :]
 end
