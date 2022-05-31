@@ -219,9 +219,11 @@ p2 = boxplot(final_losses.striatumUpdate, final_losses.loss,
              whisker_range=10.0)
 
 labels = Dict("dopamine" => "Heterogenous dopamine",
-              "flat_dopamine" => "Homogenous dopamine")
+              "flat_dopamine" => "Homogenous dopamine",
+)
 colors_d = Dict("dopamine" => colorant"#269d26",
-                "flat_dopamine" => colorant"#1a54a6")
+                "flat_dopamine" => colorant"#1a54a6",
+                "no_dopamine" => colorant"#820655")
 losses = readAsDataFrame("data/vary_lambda_dim4.h5", true)
 plotSeries(losses, :lambda, :loss, :striatumUpdate, axis=:log, labels=labels, colors=colors_d)
 losses = readAsDataFrame("data/vary_lambda_dim4_flat_dopamine.h5", true)
@@ -279,3 +281,31 @@ p1 = plotSeries!(losses, :trial, :loss, :striatumUpdate, yaxis=:log,
            labels=Dict("dopamine" => "RFLO"), minorticks=true,
            minorgrid=true, gridalpha=.4, colors=colors_d,
            minorgridalpha=.2, ylim=(1e-2, 1e2), fg_legend=nothing, left_margin=10mm)
+
+
+labels = Dict("dopamine" => "Heterogenous dopamine",
+              "flat_dopamine" => "Homogenous dopamine",
+              "no_dopamine" => "No corticostrital plasticity")
+colors_d = Dict("dopamine" => colorant"#269d26",
+                "flat_dopamine" => colorant"#1a54a6",
+                "no_dopamine" => colorant"#820655")
+
+losses = readAsDataFrame("data/vary_task_dim.h5")
+losses[!, :avg_loss] = losses.loss ./ losses.target_dim
+target_dim = plotSeries(losses, :target_dim, :avg_loss, :striatumUpdate, yaxis=:log, xlabel="Dimensionality of target", colors=colors_d, labels=labels)
+
+losses = readAsDataFrame("data/vary_net_size.h5")
+net_size = plotSeries(losses, :net_size, :loss, :striatumUpdate, yaxis=:log, xlabel="Number of SPNs",
+ylabel="Squared loss", colors=colors_d, labels=labels)
+
+losses = readAsDataFrame("data/vary_task_tau_yet_again.h5")
+target_tau = plotSeries(losses, :target_tau, :loss, :striatumUpdate, yaxis=:log, xlabel="Timescale of target", colors=colors_d, labels=labels)
+
+three_supp = plot(net_size, target_dim, target_tau, layout=(1,3),
+     size=(6.0*200, 1.2*200), dpi=200,
+     labelfontsize=fontsize, tickfontsize=fontsize, 
+     legendfontsize=fontsize, bottom_margin=10mm,
+     left_margin=10mm,
+     minorticks=true, minorgrid=true,
+     gridalpha=.4, minorgridalpha=.2)
+savefig(three_supp, "manuscript_figs/fig_supp1_part1.svg")

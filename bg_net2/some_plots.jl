@@ -89,3 +89,23 @@ ylabels = ust.n_varicosities
 values = Matrix{Float64}(ust[:, Not(:n_varicosities)])
 heatmap(xlabels, ylabels, -log10.(values), axis=:log,
         caxis=:log, xlabel="Spatial scale", ylabel="varicosities/cell")
+
+
+
+losses = readAsDataFrame("data/opt_adam_4dim.h5", false)
+for ff = unique(losses.feedback_factor)
+    subset = losses[losses.feedback_factor .== ff, :]
+    if size(subset, 1) > 0
+        pl = plotSeries(subset, :trial, :loss, :learning_rate, yaxis=:log, title="Feedback factor $ff", ylim=(1e-2, 1e2))
+        display(pl)
+    end
+end
+
+losses = readAsDataFrame("data/opt_adam_lr.h5", false)
+for ff = unique(losses.feedback_factor)
+    subset = losses[losses.feedback_factor .== ff, :]
+    if size(subset, 1) > 0
+        pl = plotSeries(subset, :trial, :loss, :learning_rate, yaxis=:log, title="Feedback factor $ff", ylim=(1e-2, 1e2))
+        display(pl)
+    end
+end
