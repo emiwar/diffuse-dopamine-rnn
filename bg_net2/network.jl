@@ -10,13 +10,15 @@ mutable struct Population
     alpha::Float64
     bias::Float64
     noise::Float64
+    m_disc::Float64
+    v_disc::Float64
 end
 
 Base.size(pop::Population) = length(pop.v)
-function Population(size::Integer; tau=20.0, bias=0.0, noise=0.0)
+function Population(size::Integer; tau=20.0, bias=0.0, noise=0.0, m_disc=0.0, v_disc=0.0)
     Population(zeros(size), zeros(size),
         Dict{Population, Vector{Vector{T}} where T <: Synapse}(),
-        exp(-1/tau), bias, noise)
+        exp(-1/tau), bias, noise, m_disc, v_disc)
 end
 phi(v) = 1/(1+exp(-v+2))
 
@@ -126,10 +128,12 @@ function updateWeights!(pop::Population, feedback, eta, t)
     for synSign in [1, -1]
         eachSynapse(pop, synapseType=AdamSynapse{synSign}) do synapse, prePop, post
             g = synapse.trace*feedback[post]
-            synapse.m = 0.9*synapse.m + 0.1*g
-            synapse.v = 0.99*synapse.v + 0.01*g*g
-            mhat = synapse.m / (1-0.9^t)
-            vhat = synapse.v / (1-0.99^t)
+            m_disc = prePop.m_disc
+            v_disc = prePop.v_disc
+            synapse.m = m_disc*synapse.m + (1-m_disc)*g
+            synapse.v = v_disc*synapse.v + (1-v_disc)*g*g
+            mhat = synapse.m / (1-m_disc^t)
+            vhat = synapse.v / (1-v_disc^t)
             synapse.weight += eta*mhat/(sqrt(vhat)+1e-6)
             if synSign == 1
                 synapse.weight = max(synapse.weight, 0)
