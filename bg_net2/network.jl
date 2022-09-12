@@ -31,7 +31,7 @@ mutable struct EligabilitySynapse{sign} <: PlasticSynapse
     trace::Float64
 end
 
-mutable struct BalanceSynapse <: PlasticSynapse
+mutable struct BalanceSynapse <: Synapse
     weight::Float64
     pre::UInt64
 end
@@ -44,11 +44,24 @@ mutable struct AdamSynapse{sign} <: PlasticSynapse
     v::Float64
 end
 
+mutable struct DelayedSynapse{sign} <: PlasticSynapse
+    weight::Float64
+    pre::UInt64
+    trace::Float64
+    dopTrace::Float64
+    traceTrace::Float64
+end
+
+
+
 EligabilitySynapse{s}(weight, pre) where s = EligabilitySynapse{s}(weight, pre, 0.0)
 Base.sign(::EligabilitySynapse{s}) where s = s
 
 AdamSynapse{s}(weight, pre) where s = AdamSynapse{s}(weight, pre, 0.0, 0.0, 0.0)
 Base.sign(::AdamSynapse{s}) where s = s
+
+DelayedSynapse{s}(weight, pre) where s = DelayedSynapse{s}(weight, pre, 0.0, 0.0, 0.0)
+Base.sign(::DelayedSynapse{s}) where s = s
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -85,7 +98,8 @@ function step!(pop::Population)
     r = phi.(pop.v)
     dr = r .* (1 .- r) #(1 .- r.^2)
     
-    eachSynapse(pop, synapseType=Union{EligabilitySynapse, AdamSynapse}) do synapse, prePop, post
+    #Union{EligabilitySynapse, AdamSynapse}) do synapse, prePop, post
+    eachSynapse(pop, synapseType=PlasticSynapse) do synapse, prePop, post
         synapse.trace *= pop.alpha
         synapse.trace += (1-pop.alpha)*prePop.r[synapse.pre]*dr[post]
     end
@@ -117,6 +131,17 @@ function updateWeights!(pop::Population, feedback, eta, t)
             mhat = synapse.m / (1-0.9^t)
             vhat = synapse.v / (1-0.99^t)
             synapse.weight += eta*mhat/(sqrt(vhat)+1e-6)
+            if synSign == 1
+                synapse.weight = max(synapse.weight, 0)
+            else
+                synapse.weight = min(synapse.weight, 0)
+            end
+        end
+        
+        eachSynapse(pop, synapseType=DelayedSynapse{synSign}) do synapse, prePop, post
+            synapse.dopTrace = 0.9*synapse.dopTrace + 0.1*feedback[post]
+            synapse.traceTrace = 0.9*synapse.traceTrace + 0.1*synapse.trace
+            synapse.weight += eta*synapse.traceTrace*synapse.dopTrace
             if synSign == 1
                 synapse.weight = max(synapse.weight, 0)
             else
