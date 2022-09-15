@@ -8,11 +8,14 @@ mutable struct BgNet
     str_imsn_pos::Matrix{Float64}
     feedback_dmsn::Matrix{Float64}
     feedback_imsn::Matrix{Float64}
+    filtered_dopamine::Vector{Float64}
+    dopamine_alpha::Float64
     t::Int64
 end
 
 function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::Float64;
-               lambda=0.1, SynapseType::Type=EligabilitySynapse, n_varicosities::Integer=10)
+               lambda=0.1, SynapseType::Type=EligabilitySynapse, n_varicosities::Integer=10,
+               dopamine_tau::Float64=50.0)
     populations = Dict{Symbol, Population}()
     
     populations[:ctx_exc] = Population(floor(Int, 0.8*size), tau=10.0, noise=0.0)
@@ -65,8 +68,11 @@ function BgNet(size::Integer, readout_size::Integer, eta_snr::Float64, eta_str::
     balanceWeights!(populations[:ctx_inh])
     balanceWeights!(populations[:str_dmsn])
     balanceWeights!(populations[:str_imsn])
+    dopamine_alpha = exp(-1/dopamine_tau)
+    filtered_dopamine = zeros(readout_size)
     #ctx_exc_avg = 0.5*ones(Base.size(populations[:ctx_exc]))
-    return BgNet(populations, eta_snr, eta_str, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn, 1)   
+    return BgNet(populations, eta_snr, eta_str, str_dmsn_pos, str_imsn_pos, feedback_dmsn, feedback_imsn,
+                 filtered_dopamine, dopamine_alpha, 1)   
 end
 
 pop_order(::BgNet) = (:thal, :ctx_exc, :ctx_inh, :str_dmsn, :str_imsn, :snr)
@@ -111,7 +117,15 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         feedback_imsn = -(getWeightMatrix(net[:str_imsn], net[:snr]))'*(error .* postFactor)
         updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t)
         updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t)
+    elseif updateStriatum==:smoothed_dopamine
+        net.filtered_dopamine = net.dopamine_alpha*net.filtered_dopamine + (1-net.dopamine_alpha)*error
+        postFactor = net[:snr].r .* (1 .- net[:snr].r)
+        feedback_dmsn =  (net.feedback_dmsn)*(net.filtered_dopamine .* postFactor)
+        feedback_imsn = -(net.feedback_imsn)*(net.filtered_dopamine .* postFactor)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t)
     end
+    
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r
     #updateWeights!(net[:ctx_exc], 0.5 .- net.ctx_exc_avg, net.eta)
     #updateWeights!(net[:ctx_inh], 0.5 .- net[:ctx_inh].r, net.eta)

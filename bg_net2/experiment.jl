@@ -28,15 +28,16 @@ const DEFAULT_PARAMS = (net_size=200, trial_length=200,
                         n_trials=5000, striatumUpdate=:dopamine,
                         learning_rate=1e-3, feedback_factor=25,
                         synapseType=EligabilitySynapse, n_varicosities=10,
-                        repetition=1)
+                        dopamine_tau=50.0, repetition=1)
 
 function train_network(desc::String; net_size=200, trial_length=200,
                         target_dim=4, target_tau=20.0, lambda=0.1,
                         n_trials=5000, striatumUpdate=:dopamine,
                         learning_rate=1e-3, feedback_factor=25,
                         synapseType=EligabilitySynapse, n_varicosities=10,
-                        repetition=1)
-    net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda, SynapseType=synapseType, n_varicosities=n_varicosities)
+                        dopamine_tau=50.0, repetition=1)
+    net = BgNet(net_size, target_dim, learning_rate, learning_rate*feedback_factor, lambda=lambda,
+                SynapseType=synapseType, n_varicosities=n_varicosities, dopamine_tau=dopamine_tau)
     if striatumUpdate == :random
         randomizeFeedback!(net)
     end
