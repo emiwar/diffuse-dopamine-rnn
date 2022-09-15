@@ -122,8 +122,8 @@ function step!(net::BgNet, target; clamp::NamedTuple=NamedTuple(), updateStriatu
         postFactor = net[:snr].r .* (1 .- net[:snr].r)
         feedback_dmsn =  (net.feedback_dmsn)*(net.filtered_dopamine .* postFactor)
         feedback_imsn = -(net.feedback_imsn)*(net.filtered_dopamine .* postFactor)
-        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t)
-        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t)
+        updateWeights!(net[:str_dmsn], feedback_dmsn, net.eta_str, net.t; dopamine_alpha=net.dopamine_alpha)
+        updateWeights!(net[:str_imsn], feedback_imsn, net.eta_str, net.t; dopamine_alpha=net.dopamine_alpha)
     end
     
     #net.ctx_exc_avg .= 0.999 .* net.ctx_exc_avg .+ 0.001 .* net[:ctx_exc].r

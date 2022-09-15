@@ -52,7 +52,12 @@ mutable struct DelayedSynapse{sign} <: PlasticSynapse
     traceTrace::Float64
 end
 
-
+mutable struct DiffSynapse{sign} <: PlasticSynapse
+    weight::Float64
+    pre::UInt64
+    trace::Float64
+    lastD::Float64
+end
 
 EligabilitySynapse{s}(weight, pre) where s = EligabilitySynapse{s}(weight, pre, 0.0)
 Base.sign(::EligabilitySynapse{s}) where s = s
@@ -62,6 +67,9 @@ Base.sign(::AdamSynapse{s}) where s = s
 
 DelayedSynapse{s}(weight, pre) where s = DelayedSynapse{s}(weight, pre, 0.0, 0.0, 0.0)
 Base.sign(::DelayedSynapse{s}) where s = s
+
+DiffSynapse{s}(weight, pre) where s = DiffSynapse{s}(weight, pre, 0.0, 0.0)
+Base.sign(::DiffSynapse{s}) where s = s
 
 function connect!(synapseType::Type, prePop::Population, postPop::Population,
                   weight, prob)
@@ -107,7 +115,7 @@ function step!(pop::Population)
     pop.r = r + pop.noise*randn(size(pop))
 end
 
-function updateWeights!(pop::Population, feedback, eta, t)
+function updateWeights!(pop::Population, feedback, eta, t; dopamine_alpha=0.0)
     eachSynapse(pop, synapseType=EligabilitySynapse{1}) do synapse, prePop, post
         synapse.weight += eta*synapse.trace*feedback[post]
         synapse.weight = max(synapse.weight, 0)
@@ -142,6 +150,17 @@ function updateWeights!(pop::Population, feedback, eta, t)
             synapse.dopTrace = 0.9*synapse.dopTrace + 0.1*feedback[post]
             synapse.traceTrace = 0.9*synapse.traceTrace + 0.1*synapse.trace
             synapse.weight += eta*synapse.traceTrace*synapse.dopTrace
+            if synSign == 1
+                synapse.weight = max(synapse.weight, 0)
+            else
+                synapse.weight = min(synapse.weight, 0)
+            end
+        end
+        
+        eachSynapse(pop, synapseType=DiffSynapse{synSign}) do synapse, prePop, post
+            diff = (feedback[post] - dopamine_alpha*synapse.lastD) / (1 - dopamine_alpha)
+            synapse.lastD = feedback[post]
+            synapse.weight += eta*synapse.trace*diff
             if synSign == 1
                 synapse.weight = max(synapse.weight, 0)
             else
