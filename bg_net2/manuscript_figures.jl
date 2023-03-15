@@ -309,3 +309,32 @@ three_supp = plot(net_size, target_dim, target_tau, layout=(1,3),
      minorticks=true, minorgrid=true,
      gridalpha=.4, minorgridalpha=.2)
 savefig(three_supp, "manuscript_figs/fig_supp1_part1.svg")
+
+labels = Dict("dopamine" => "Instantaneous dopamine",
+              "no_dopamine" => "No corticostriatal plasticity",
+              "smoothed_dopamine" => "Low-pass filtered dopamine",
+              "DiffSynapse" => "Low-pass filtered dopamine\n + high-pass synapse")
+colors_d = Dict("dopamine" => colorant"#269d26",
+                "smoothed_dopamine" => colorant"#1a54a6",
+                "no_dopamine" => colorant"#820655",
+                "DiffSynapse" => colorant"orange")
+losses = readAsDataFrame("data/test_smoothed_dopamine_mpi_merged.h5")
+#Hack to replace all values with the results for dopamine_tau==0.1 for updates that don't depend on dopamine_tau
+first_dict = Dict((r.striatumUpdate, r.repetition)=>r.loss for r in eachrow(losses) if r.dopamine_tau==0.1)
+for r in eachrow(losses)
+    if r.striatumUpdate != "smoothed_dopamine"
+        r.loss = first_dict[(r.striatumUpdate, r.repetition)]
+    end
+end
+plotSeries(losses, :dopamine_tau, :loss, :striatumUpdate, axis=:log, colors=colors_d, labels=labels)
+losses = readAsDataFrame("data/smoothed_dopamine_with_diff_synapse_mpi_merged.h5")
+plotSeries!(losses, :dopamine_tau, :loss, :synapseType, axis=:log, colors=colors_d, labels=labels)
+p=plot!(size=(2.5*200, 1.8*200), dpi=200,
+      labelfontsize=fontsize, tickfontsize=fontsize, 
+      legendfontsize=fontsize, bottom_margin=10mm,
+      left_margin=10mm,
+      minorticks=true, minorgrid=true,
+      gridalpha=.4, minorgridalpha=.2,
+      xlim=(1e-1, 1e3), ylim=(2e-2, 4e0),
+      xlabel="Dopamine  ", ylabel="Squared error")
+savefig(p, "manuscript_figs/fig3_v3_draft.svg")
